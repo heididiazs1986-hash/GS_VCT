@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.7.1';
+const VER = '1.7.2';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -207,19 +207,16 @@ function balanceHTML(cd) {
   if (!all.length) return '';
   const ok = b => b.indice != null && b.entradas > 0 && b.perdidas >= 0, per = p => String(p).length === 6 ? String(p).slice(4) + '/' + String(p).slice(2, 4) : String(p);
   const vals = all.slice(-12), valid = all.filter(ok), last = valid[valid.length - 1], prev = valid[valid.length - 2];
-  const W = 340, H = 168, top = 22, bot = 30, padL = 10, padR = 10, n = vals.length, step = (W - padL - padR) / n, bw = Math.min(34, step * 0.62);
-  const mx = Math.max(0.3, ...vals.filter(ok).map(b => b.indice)) * 1.12, y = v => top + (H - top - bot) * (1 - v / mx);
-  const bars = vals.map((b, i) => {
-    const x = padL + step * i + (step - bw) / 2, good = ok(b), h = good ? Math.max(2, (H - top - bot) * (b.indice / mx)) : 0, col = !good ? 'var(--mut)' : b === last ? 'url(#gOr)' : 'url(#gBl)';
-    return `<rect x="${x.toFixed(1)}" y="${(H - bot - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="5" style="fill:${col};opacity:${good ? 1 : .35}"/>
-      <text x="${(x + bw / 2).toFixed(1)}" y="${(good ? H - bot - h - 5 : H - bot - 5).toFixed(1)}" text-anchor="middle" class="bv">${good ? fmt(b.indice * 100, 1) : '⚠'}</text>
-      <text x="${(x + bw / 2).toFixed(1)}" y="${H - 11}" text-anchor="middle" class="bl">${per(b.periodo)}</text>`;
+  const mx = Math.max(0.3, ...vals.filter(ok).map(b => b.indice));
+  const bars = vals.map(b => {
+    const good = ok(b), w = good ? Math.max(1.5, b.indice / mx * 100) : 0;
+    return `<div class="hb${b === last ? ' cur' : ''}"><span class="hl">${per(b.periodo)}</span><div class="ht"><i style="width:${w.toFixed(1)}%"></i></div><b class="hv">${good ? fmt(b.indice * 100, 1) + ' %' : '⚠'}</b></div>`;
   }).join('');
   const delta = last && prev ? (last.indice - prev.indice) * 100 : null;
   const tabla = `<details class="det"><summary>Ver tabla</summary><table class="tb"><tr><th>Periodo</th><th>Entradas</th><th>Salidas</th><th>Pérdidas</th><th>Índice</th></tr>${[...all].reverse().map(b => `<tr><td>${esc(b.periodo)}</td><td>${fmt(b.entradas)}</td><td>${fmt(b.salidas)}</td><td>${fmt(b.perdidas)}</td><td style="font-weight:700">${b.indice == null ? '—' : fmt(b.indice * 100, 1) + ' %'}${ok(b) ? '' : ' ⚠'}</td></tr>`).join('')}</table></details>`;
   return `<div class="card dash"><h2>Balance del transformador${last ? ` <span class="sub">· ${per(last.periodo)}</span>` : ''}</h2>
     ${last ? `<div class="kpis"><div class="kpi big"><b style="color:var(--tx)">${fmt(last.indice * 100, 1)} %</b><span>Índice de pérdidas${delta != null ? `<br><i class="${delta > 0 ? 'up' : 'dn'}">${delta > 0 ? '▲' : '▼'} ${fmt(Math.abs(delta), 1)} pts vs ${per(prev.periodo)}</i>` : ''}</span></div><div class="kpi"><b>${fmt(last.perdidas)}</b><span>Pérdidas kWh</span></div><div class="kpi"><b>${fmt(last.entradas)}</b><span>Entradas kWh</span></div></div>` : ''}
-    <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Índice de pérdidas por periodo"><defs><linearGradient id="gOr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF9A4D"/><stop offset="1" stop-color="#FF6600"/></linearGradient><linearGradient id="gBl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8FD3F0"/><stop offset="1" stop-color="#35A1D1"/></linearGradient></defs>${bars}</svg>
+    <div class="hbs" role="img" aria-label="Índice de pérdidas por periodo">${bars}</div>
     ${tabla}</div>`;
 }
 function viewLista(cd) {
@@ -322,7 +319,7 @@ function cdFields(cd) {
     <div class="fld"><label class="req">Hallazgos del CD</label><div id="hzbox">${hzHTML(cd)}</div></div>`;
 }
 function viewSetup(cd) {
-  return `<div class="card"><h2>Datos del CD ${esc(cd.id)}</h2><div class="fld"><label class="req">N° de OT</label><input type="text" ${otAtt} data-cdf="ot" value="${esc(cd.ot)}" autocomplete="off"></div>${cdFields(cd)}<button class="btn pri full" id="btnSetup" data-act="setup-ok"${setupOk(cd) ? '' : ' disabled'}>Continuar</button></div>${FOOT}`;
+  return `<div class="card"><h2>Datos del CD ${esc(cd.id)}</h2><div class="fld"><label class="req">N° de OT</label><input type="text" ${otAtt} data-cdf="ot" value="${esc(cd.ot)}" autocomplete="off"></div>${cdFields(cd)}<button class="btn pri full" id="btnSetup" data-act="setup-ok"${setupOk(cd) ? '' : ' disabled'}>Continuar</button></div>${balanceHTML(cd)}${FOOT}`;
 }
 function revisarFuera(cd) {
   const lst = cd.registros.filter(r => [0, 2].includes(clasif(cd, r)));
