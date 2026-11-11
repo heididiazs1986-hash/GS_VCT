@@ -287,9 +287,10 @@ function geoHTML(f) {
   const has = f.lat != null, p = f.prec, good = p != null && p <= 12, cap = !!S.geo;
   const bd = cap ? ['CAPTURANDO', 'warn'] : !has ? ['SIN GPS', ''] : good ? ['BUENA', 'ok'] : ['REGULAR', 'mid'];
   const ring = p == null ? 28 : Math.round(Math.min(110, Math.max(26, p * 3)));
-  return `<div class="gcard"><div class="ghead"><div class="gpin">${ic('pin')}</div><div class="gcopy"><b>${has ? 'Ubicación capturada' : cap ? 'Buscando señal…' : 'Ubicación pendiente'}</b><small id="geoMsg">${cap ? 'Quédate quieto, al aire libre si puedes.' : has ? `Precisión ${p.toFixed(1)} m · recomendada ≤ 12 m` : 'Coordenadas no capturadas.'}</small></div><span class="gbadge ${bd[1]}">${bd[0]}</span></div>
+  return `<div class="gcard"><div class="ghead"><div class="gpin">${ic('pin')}</div><div class="gcopy"><b>${has ? 'Ubicación capturada' : cap ? 'Buscando señal…' : 'Ubicación pendiente'}</b><small id="geoMsg">${cap ? 'Quédate quieto, al aire libre si puedes.' : has ? 'Precisión recomendada ≤ 12 m' : 'Coordenadas no capturadas.'}</small></div><span class="gbadge ${bd[1]}">${bd[0]}</span></div>
     <div class="gmap"><div class="gring${cap ? ' pulse' : ''}${has && !good ? ' mid' : ''}" style="width:${ring}px;height:${ring}px"><i></i></div></div></div>
     <div class="grid2"><div class="fld"><label>Latitud</label><input type="text" readonly value="${has ? f.lat.toFixed(7) : ''}" placeholder="GPS"></div><div class="fld"><label>Longitud</label><input type="text" readonly value="${has ? f.lon.toFixed(7) : ''}" placeholder="GPS"></div></div>
+    <div class="fld"><label>Precisión (m)</label><input type="text" readonly value="${p == null ? '' : p.toFixed(1)}" placeholder="GPS"></div>
     <button class="btn ter full" data-act="geo">${ic('pin')}${cap ? 'Detener y usar la mejor' : has ? 'Capturar de nuevo' : 'Capturar ubicación'}</button>`;
 }
 
