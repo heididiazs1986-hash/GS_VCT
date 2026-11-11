@@ -184,7 +184,7 @@ function stats(cd) {
 // ---------- vistas ----------
 function header() {
   const cd = curCD();
-  if (S.view === 'home') return `<header><div class="brand">${LOGO}<div><h1>GS VCT</h1><small>${esc(cfg.usuario ? corto(cfg.usuario) : 'Vínculo Cliente – Transformador')}</small></div></div>${cfg.usuario ? `<button class="ib" data-act="cambiar-usuario" aria-label="Cambiar usuario">${ic('user')}</button>` : ''}</header>`;
+  if (S.view === 'home') return `<header><div class="brand">${LOGO}<div><h1>GS VCT</h1>${cfg.usuario ? '' : '<small>Vínculo Cliente – Transformador</small>'}</div></div>${cfg.usuario ? `<button class="ib who" data-act="cambiar-usuario" aria-label="Cambiar usuario"><span>${esc(corto(cfg.usuario))}</span>${ic('user')}</button>` : ''}</header>`;
   const st = stats(cd);
   return `<header><button class="ib" data-act="home" aria-label="Volver">${ic('back')}</button><div class="brand"><div><h1>${esc(cd.id)}</h1><small>${esc(corto(cfg.usuario))} · ${esc(cd.meta.circuito)}${cd.meta.potencia ? ' · ' + cd.meta.potencia + ' kVA' : ''}${cd.meta.tipoRed ? ' · ' + esc(cd.meta.tipoRed) : ''}</small></div></div><div class="prog">${st.visit}/${st.total}</div></header>`;
 }
@@ -210,17 +210,16 @@ function balanceHTML(cd) {
   const W = 340, H = 168, top = 22, bot = 30, padL = 10, padR = 10, n = vals.length, step = (W - padL - padR) / n, bw = Math.min(34, step * 0.62);
   const mx = Math.max(0.3, ...vals.filter(ok).map(b => b.indice)) * 1.12, y = v => top + (H - top - bot) * (1 - v / mx);
   const bars = vals.map((b, i) => {
-    const x = padL + step * i + (step - bw) / 2, good = ok(b), h = good ? Math.max(2, (H - top - bot) * (b.indice / mx)) : 0, col = !good ? 'var(--mut)' : b.indice >= 0.2 ? 'url(#gOr)' : 'url(#gBl)';
+    const x = padL + step * i + (step - bw) / 2, good = ok(b), h = good ? Math.max(2, (H - top - bot) * (b.indice / mx)) : 0, col = !good ? 'var(--mut)' : b === last ? 'url(#gOr)' : 'url(#gBl)';
     return `<rect x="${x.toFixed(1)}" y="${(H - bot - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="5" style="fill:${col};opacity:${good ? 1 : .35}"/>
       <text x="${(x + bw / 2).toFixed(1)}" y="${(good ? H - bot - h - 5 : H - bot - 5).toFixed(1)}" text-anchor="middle" class="bv">${good ? fmt(b.indice * 100, 1) : '⚠'}</text>
       <text x="${(x + bw / 2).toFixed(1)}" y="${H - 11}" text-anchor="middle" class="bl">${per(b.periodo)}</text>`;
   }).join('');
-  const ty = y(0.2).toFixed(1), delta = last && prev ? (last.indice - prev.indice) * 100 : null;
-  const tabla = `<details class="det"><summary>Ver tabla</summary><table class="tb"><tr><th>Periodo</th><th>Entradas</th><th>Salidas</th><th>Pérdidas</th><th>Índice</th></tr>${[...all].reverse().map(b => `<tr><td>${esc(b.periodo)}</td><td>${fmt(b.entradas)}</td><td>${fmt(b.salidas)}</td><td>${fmt(b.perdidas)}</td><td style="color:${ok(b) && b.indice >= 0.2 ? '#E8590C' : 'inherit'};font-weight:700">${b.indice == null ? '—' : fmt(b.indice * 100, 1) + ' %'}${ok(b) ? '' : ' ⚠'}</td></tr>`).join('')}</table></details>`;
+  const delta = last && prev ? (last.indice - prev.indice) * 100 : null;
+  const tabla = `<details class="det"><summary>Ver tabla</summary><table class="tb"><tr><th>Periodo</th><th>Entradas</th><th>Salidas</th><th>Pérdidas</th><th>Índice</th></tr>${[...all].reverse().map(b => `<tr><td>${esc(b.periodo)}</td><td>${fmt(b.entradas)}</td><td>${fmt(b.salidas)}</td><td>${fmt(b.perdidas)}</td><td style="font-weight:700">${b.indice == null ? '—' : fmt(b.indice * 100, 1) + ' %'}${ok(b) ? '' : ' ⚠'}</td></tr>`).join('')}</table></details>`;
   return `<div class="card dash"><h2>Balance del transformador${last ? ` <span class="sub">· ${per(last.periodo)}</span>` : ''}</h2>
-    ${last ? `<div class="kpis"><div class="kpi big"><b style="color:${last.indice >= 0.2 ? '#E8590C' : '#1F86C4'}">${fmt(last.indice * 100, 1)} %</b><span>Índice de pérdidas${delta != null ? `<br><i class="${delta > 0 ? 'up' : 'dn'}">${delta > 0 ? '▲' : '▼'} ${fmt(Math.abs(delta), 1)} pts vs ${per(prev.periodo)}</i>` : ''}</span></div><div class="kpi"><b>${fmt(last.perdidas)}</b><span>Pérdidas kWh</span></div><div class="kpi"><b>${fmt(last.entradas)}</b><span>Entradas kWh</span></div></div>` : ''}
-    <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Índice de pérdidas por periodo"><defs><linearGradient id="gOr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF9A4D"/><stop offset="1" stop-color="#FF6600"/></linearGradient><linearGradient id="gBl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8BD6FF"/><stop offset="1" stop-color="#2F9BD6"/></linearGradient></defs><line x1="${padL}" x2="${W - padR}" y1="${ty}" y2="${ty}" class="thr"/>${bars}</svg>
-    <div class="lg"><span><i style="background:#FF6600"></i>Sobre la meta (≥ 20 %)</span><span><i style="background:#2F9BD6"></i>Dentro de la meta</span></div>
+    ${last ? `<div class="kpis"><div class="kpi big"><b style="color:var(--tx)">${fmt(last.indice * 100, 1)} %</b><span>Índice de pérdidas${delta != null ? `<br><i class="${delta > 0 ? 'up' : 'dn'}">${delta > 0 ? '▲' : '▼'} ${fmt(Math.abs(delta), 1)} pts vs ${per(prev.periodo)}</i>` : ''}</span></div><div class="kpi"><b>${fmt(last.perdidas)}</b><span>Pérdidas kWh</span></div><div class="kpi"><b>${fmt(last.entradas)}</b><span>Entradas kWh</span></div></div>` : ''}
+    <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Índice de pérdidas por periodo"><defs><linearGradient id="gOr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF9A4D"/><stop offset="1" stop-color="#FF6600"/></linearGradient><linearGradient id="gBl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8FD3F0"/><stop offset="1" stop-color="#35A1D1"/></linearGradient></defs>${bars}</svg>
     ${tabla}</div>`;
 }
 function viewLista(cd) {
@@ -298,14 +297,14 @@ function geoHTML(f) {
 const MAP = { z: 1, dx: 0, dy: 0, ptrs: new Map(), pts: [] };
 function viewMapa() {
   return `<canvas id="map"></canvas><div class="mapbtns"><button class="btn" data-act="mz" data-v="1.4">＋</button><button class="btn" data-act="mz" data-v="0.7">－</button><button class="btn" data-act="mc">Centrar</button><button class="btn ter" data-act="mgps">Mi ubicación</button></div>
-    <div class="legend"><span><i style="background:#8a96a3"></i>Pendiente</span><span><i style="background:#12874e"></i>Del circuito</span><span><i style="background:#cf3128"></i>Fuera del circuito</span><span><i style="background:#0b78b8"></i>No en ficha</span><span><i style="background:#FF6600"></i>UNC</span><span><i style="background:#000;border-radius:2px"></i>Transformador</span></div>
+    <div class="legend"><span><i style="background:#94A3B8"></i>Pendiente</span><span><i style="background:#35A1D1"></i>En ficha, de este CD</span><span><i style="background:#FFB27A"></i>En ficha, de otro CD</span><span><i style="background:#1E293B"></i>No en ficha</span><span><i style="background:#FF6600"></i>UNC</span><span><i style="background:#000;border-radius:2px"></i>Transformador</span></div>
     <div id="mapInfo"></div>${FOOT}`;
 }
 function mapSetup() {
   const cd = curCD(), cv = $('#map'); if (!cv) return;
   const s = stats(cd); const pts = [];
-  cd.ficha.forEach((f, i) => { if (f.lat != null) { const r = s.reg.get(i); const c = r ? clasif(cd, r) : null; pts.push({ lat: f.lat, lon: f.lon, col: !r ? '#8a96a3' : c === 1 ? '#12874e' : c === 2 ? '#cf3128' : '#0b78b8', i, label: `Serv. ${f.servicio} · ${f.direccion}` }); } });
-  cd.registros.forEach(r => { if (r.lat != null && (r.tipo === 'UNC' || matchFicha(cd, r).i == null)) pts.push({ lat: r.lat, lon: r.lon, col: r.tipo === 'UNC' ? '#FF6600' : '#0b78b8', rid: r.id, label: r.tipo === 'UNC' ? 'UNC ' + (r.direccion || '') : `Serv. ${r.servicio} (fuera de ficha)` }); });
+  cd.ficha.forEach((f, i) => { if (f.lat != null) { const r = s.reg.get(i); const c = r ? clasif(cd, r) : null; pts.push({ lat: f.lat, lon: f.lon, col: !r ? '#94A3B8' : c === 1 ? '#35A1D1' : '#FFB27A', i, label: `Serv. ${f.servicio} · ${f.direccion}` }); } });
+  cd.registros.forEach(r => { if (r.lat != null && (r.tipo === 'UNC' || matchFicha(cd, r).i == null)) pts.push({ lat: r.lat, lon: r.lon, col: r.tipo === 'UNC' ? '#FF6600' : '#1E293B', rid: r.id, label: r.tipo === 'UNC' ? 'UNC ' + (r.direccion || '') : `Serv. ${r.servicio} (fuera de ficha)` }); });
   const t = cd.meta.lat != null ? { lat: cd.meta.lat, lon: cd.meta.lon } : pts.length ? { lat: pts.reduce((a, p) => a + p.lat, 0) / pts.length, lon: pts.reduce((a, p) => a + p.lon, 0) / pts.length } : { lat: 4.6, lon: -74.1 };
   const kx = 111320 * Math.cos(t.lat * Math.PI / 180), ky = 110540;
   pts.forEach(p => { p.x = (p.lon - t.lon) * kx; p.y = (p.lat - t.lat) * ky; p.d = Math.hypot(p.x, p.y); });
