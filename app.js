@@ -190,8 +190,8 @@ function header() {
 }
 function nav() {
   if (S.view !== 'cd' || !curCD() || !curCD().setup) return '';
-  const isU = S.form && S.form.tipo === 'UNC', t = [['lista', ic('list'), 'Clientes'], ['reg', ic('plus'), 'Cliente'], ['unc', ic('home'), 'UNC'], ['mapa', ic('pin'), 'Mapa'], ['res', ic('sum'), 'Resumen']];
-  const on = k => k === 'reg' ? S.tab === 'reg' && !isU : k === 'unc' ? S.tab === 'reg' && isU : S.tab === k;
+  const isU = S.form && S.form.tipo === 'UNC', t = [['lista', ic('list'), 'Ficha'], ['reg', ic('plus'), 'Otros clientes'], ['unc', ic('home'), 'UNC'], ['mapa', ic('pin'), 'Mapa'], ['res', ic('sum'), 'Resumen']];
+  const fromL = S.tab === 'reg' && !isU && S.from === 'lista', on = k => k === 'reg' ? S.tab === 'reg' && !isU && !fromL : k === 'unc' ? S.tab === 'reg' && isU : k === 'lista' ? S.tab === 'lista' || fromL : S.tab === k;
   return `<nav class="bottom">${t.map(([k, i, l]) => `<button data-tab="${k}" class="${on(k) ? 'on' : ''}">${i}${l}</button>`).join('')}</nav>`;
 }
 function viewHome() {
