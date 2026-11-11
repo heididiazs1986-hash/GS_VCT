@@ -244,7 +244,7 @@ function viewReg(cd) {
       <div class="fld"><label class="req">Marca del medidor</label><select data-f="marca">${opts([...marcasList(), SINMED, OTRA], f.marca, 'Selecciona…')}</select></div>
       <div class="fld ${f.marca === OTRA ? '' : 'hidden'}" data-show="otra"><label class="req">Escribe la marca</label><input type="text" data-f="marcaOtra" value="${esc(f.marcaOtra)}" style="text-transform:uppercase"></div>
       <div class="fld ${f.marca === SINMED ? 'hidden' : ''}" data-show="lect"><label class="req">Lectura de energía activa (kWh)</label><input type="number" inputmode="decimal" step="any" data-f="lectura" value="${esc(f.lectura)}"><div id="lectHint"></div></div>
-      <div class="fld ${m0.i != null ? '' : 'hidden'}" data-show="pert"><label class="req">¿Es de este circuito?</label><div class="seg" data-seg="pertenece"><button data-v="1" class="${f.pertenece === true ? 'on' : ''}">SÍ</button><button data-v="0" class="${f.pertenece === false ? 'on no' : ''}">NO</button></div></div>
+      <div class="fld ${m0.i != null ? '' : 'hidden'}" data-show="pert"><label class="req">¿Cliente vinculado a este CD?</label><div class="seg" data-seg="pertenece"><button data-v="1" class="${f.pertenece === true ? 'on' : ''}">SÍ</button><button data-v="0" class="${f.pertenece === false ? 'on no' : ''}">NO</button></div></div>
       <div class="fld" id="clasif"></div>
       <div data-show="otro" class="hidden"><div class="note warn">Otro circuito: la OT de ese CD es obligatoria al exportar.</div>
         <div class="fld" style="margin-top:12px"><label>CD correcto</label><input type="text" data-f="cdReal" value="${esc(f.cdReal)}" placeholder="XXXXTRX" style="text-transform:uppercase" autocomplete="off"></div>
@@ -399,7 +399,7 @@ function validar(cd, f, m) {
     if (!f.servicio.trim()) e.push('N° de servicio'); if (!f.cuenta.trim()) e.push('N° de cuenta');
     if (!f.marca) e.push('Marca del medidor'); else if (f.marca === OTRA && !f.marcaOtra.trim()) e.push('Escribe la marca');
     if (f.marca !== SINMED) { if (!f.medidor.trim()) e.push('N° de medidor'); if (f.lectura === '' || num(f.lectura) == null) e.push('Lectura de energía activa'); }
-    if (f.pertenece == null) e.push('¿Es de este circuito? (SÍ / NO)');
+    if (f.pertenece == null) e.push('¿Cliente vinculado a este CD? (SÍ / NO)');
     if (f.pertenece === false && f.otReal && !otOk(f.otReal)) e.push(`OT del CD correcto (${OT_LEN} dígitos)`);
   }
   if (!f.actividad) e.push('Actividad económica'); if (unc && !f.material) e.push('Tipo de material del predio');
