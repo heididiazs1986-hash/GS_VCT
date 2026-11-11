@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.8.5';
+const VER = '1.9.0';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -145,7 +145,14 @@ function buildSheets(cd) {
 const mkBlob = (data, type) => new Blob([data], { type });
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); }
+const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+async function entregarNativo(blob, name) {
+  const P = window.Capacitor.Plugins, b64 = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = no; r.readAsDataURL(blob); });
+  const w = await P.Filesystem.writeFile({ path: name, data: b64, directory: 'CACHE' });
+  try { await P.Share.share({ title: name, url: w.uri, dialogTitle: 'Guardar o enviar ' + name }); return true; } catch (e) { return false; }
+}
 async function entregar(blob, name, compartir) {
+  if (NATIVE) return entregarNativo(blob, name);
   if (compartir && navigator.canShare) { const f = new File([blob], name, { type: blob.type }); if (navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f], title: name }); return true; } catch (e) { if (e.name === 'AbortError') return false; } } }
   download(blob, name); return true;
 }
@@ -576,6 +583,6 @@ window.addEventListener('error', e => toast('Error: ' + e.message, 5000));
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
   } catch (e) { toast('No pude abrir el almacenamiento local: ' + e.message, 6000); }
   S.form = newForm(); render();
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => { });
+  if ('serviceWorker' in navigator && location.protocol !== 'file:' && !NATIVE) navigator.serviceWorker.register('sw.js').catch(() => { });
   if ('serviceWorker' in navigator && navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { if (S._rl) return; S._rl = 1; if (S.view === 'home') location.reload(); else toast('Hay una versión nueva: se aplica al volver al inicio'); });
 })();

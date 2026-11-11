@@ -4,3 +4,5 @@ Desarrollado por Heidi Díaz
 Publicar: sube estos archivos al repo (index.html, app.js, xlsx.js, sw.js, manifest.webmanifest, banner.svg, icon-192.png, icon-512.png) y deja que Vercel publique (sin build).
 Uso: Inicio > Cargar Excel del CD (hojas CLIENTES y BALANCES) > abrir el CD > registrar > Resumen > Excel (3 tablas).
 Listas fijas (técnicos, hallazgos, marcas): están en app.js; las marcas se toman de la ficha.
+
+APK (Android): la genera GitHub Actions ("Generar APK"). Se publica en Releases > GS VCT (APK) > GS-VCT.apk.

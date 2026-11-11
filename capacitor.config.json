@@ -1,0 +1,7 @@
+{
+  "appId": "com.gsvct.app",
+  "appName": "GS VCT",
+  "webDir": "www",
+  "backgroundColor": "#F4F6F9",
+  "android": { "allowMixedContent": false }
+}
