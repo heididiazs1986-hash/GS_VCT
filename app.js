@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.8.1';
+const VER = '1.8.2';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -223,14 +223,18 @@ function viewLista(cd) {
   const s = stats(cd), fl = S.flt;
   const fuera = cd.registros.filter(r => r.tipo === 'UNC' || matchFicha(cd, r).i == null).length;
   const ch = [['todos', 'Todos ' + (s.pend + fuera)], ['pend', 'Pendientes ' + s.pend], ['reg', 'Registrados ' + s.n], ['fuera', 'Fuera de ficha ' + fuera]];
-  return balanceHTML(cd) + `<div class="row" style="margin-bottom:6px"><input type="search" id="q" placeholder="Buscar servicio, cuenta, medidor…" value="${esc(S.q)}"></div>
+  return balanceHTML(cd) + `<div class="row" style="margin-bottom:6px;flex-wrap:nowrap"><input type="search" id="q" placeholder="Buscar servicio, cuenta, medidor…" value="${esc(S.q)}"><select id="ord" style="flex:0 0 auto;width:auto" aria-label="Ordenar">${[['cerca', 'Cercanía'], ['dir', 'Dirección'], ['ficha', 'Ficha']].map(([k, l]) => `<option value="${k}"${(S.ord || 'dir') === k ? ' selected' : ''}>${l}</option>`).join('')}</select></div>
     <div class="chips">${ch.map(([k, l]) => `<button class="chip ${fl === k ? 'on' : ''}" data-flt="${k}">${l}</button>`).join('')}</div>
     <div id="lst">${listHTML(cd)}</div>${FOOT}`;
 }
+function hav(a, b) { const R = 6371000, r = Math.PI / 180, dLa = (b.lat - a.lat) * r, dLo = (b.lon - a.lon) * r, h = Math.sin(dLa / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLo / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); }
 function listHTML(cd) {
   const s = stats(cd), q = S.q.trim().toLowerCase(), items = [];
   cd.ficha.forEach((f, i) => items.push({ f, i, r: s.reg.get(i) }));
   cd.registros.forEach(r => { if (r.tipo === 'UNC' || matchFicha(cd, r).i == null) items.push({ r, extra: true }); });
+  const ord = S.ord || 'dir', dist = it => { const x = it.f || it.r; return S.gps && x && x.lat != null && x.lon != null ? hav(S.gps, x) : Infinity; };
+  if (ord === 'dir') items.sort((a, b) => String((a.f || a.r).direccion || (a.r && a.r.direccion) || '').localeCompare(String((b.f || b.r).direccion || (b.r && b.r.direccion) || ''), 'es', { numeric: true, sensitivity: 'base' }));
+  else if (ord === 'cerca' && S.gps) items.sort((a, b) => dist(a) - dist(b));
   const out = items.filter(it => {
     if (S.flt === 'todos' && !it.extra && it.r) return false; if (S.flt === 'pend' && (it.extra || it.r)) return false; if (S.flt === 'reg' && !it.r) return false; if (S.flt === 'fuera' && !it.extra) return false;
     if (!q) return true; const x = it.f || it.r; return [x.servicio, x.cuenta, x.medidor, x.direccion, it.r && it.r.direccion].some(v => String(v || '').toLowerCase().includes(q));
@@ -249,7 +253,7 @@ function listHTML(cd) {
     const l1 = unc ? '' : [marca ? esc(marca) : '', clase ? esc(clase) : '', extra, hz].filter(Boolean).join(' · ');
     const l2 = unc ? hz : `Serv. ${esc(x.servicio || '—')} · Cta. ${esc(x.cuenta || '—')}`;
     const key = it.extra ? 'r' + it.r.id : 'f' + it.i;
-    return `<button class="it${S.hl === key ? ' sel' : ''}" ${it.extra ? `data-act="open-reg" data-id="${esc(it.r.id)}"` : `data-act="open-ficha" data-i="${it.i}"`}><div class="t"><span>${title}</span>${chip}</div>${l1 ? `<div class="s">${l1}</div>` : ''}${l2 ? `<div class="s">${l2}</div>` : ''}<div class="s">${esc(dir) || 'Sin dirección'}</div></button>`;
+    return `<button class="it${S.hl === key ? ' sel' : ''}" ${it.extra ? `data-act="open-reg" data-id="${esc(it.r.id)}"` : `data-act="open-ficha" data-i="${it.i}"`}><div class="t"><span>${title}</span>${chip}</div>${l1 ? `<div class="s">${l1}</div>` : ''}${l2 ? `<div class="s">${l2}</div>` : ''}<div class="s">${esc(dir) || 'Sin dirección'}${S.ord === 'cerca' && S.gps && it.f && it.f.lat != null ? ` · <b>${(d => d < 1000 ? Math.round(d) + ' m' : (d / 1000).toFixed(1).replace('.', ',') + ' km')(hav(S.gps, it.f))}</b>` : ''}</div></button>`;
   }).join('') + (out.length > 400 ? '<div class="note">Mostrando 400; usa el buscador para acotar.</div>' : '');
 }
 
@@ -552,6 +556,13 @@ document.addEventListener('input', ev => {
 });
 document.addEventListener('change', async ev => {
   const el = ev.target; if (el.dataset.f === 'cdReal' || el.dataset.cdf === 'placaReal' || el.dataset.ro === 'cd') { el.value = normCd(el.value); el.dispatchEvent(new Event('input', { bubbles: true })); } if (el.dataset.usr !== undefined && el.value) { cfg.usuario = el.value; await saveCfg(); S.form = newForm(); return render(); } if (el.id === 'fx' && el.files[0]) { cargarExcel(el.files[0]); el.value = ''; } if (el.id === 'fj' && el.files[0]) { cargarJSON(el.files[0]); el.value = ''; }
+  if (el.id === 'ord') {
+    S.ord = el.value;
+    if (S.ord !== 'cerca') return render();
+    if (!navigator.geolocation) { S.ord = 'dir'; toast('Este dispositivo no tiene GPS'); return render(); }
+    toast('Buscando tu ubicación…');
+    return navigator.geolocation.getCurrentPosition(p => { S.gps = { lat: p.coords.latitude, lon: p.coords.longitude }; render(); }, () => { S.ord = 'dir'; toast('No se pudo obtener la ubicación'); render(); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 20000 });
+  }
   if (el.dataset.hzadd !== undefined && el.value) return hzAdd(curCD(), el.value);
   if (el.dataset.cdf) { const cd = curCD(); cd[el.dataset.cdf] = el.value; saveCD(cd); if (el.dataset.cdf === 'placa') { const pr = $('[data-show="placaReal"]'); if (pr) pr.classList.toggle('hidden', el.value !== PLACA_NO); } const bs = $('#btnSetup'); if (bs) bs.disabled = !setupOk(cd); }
 });
