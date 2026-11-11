@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400" role="img" aria-label="Transformador en poste con casas y cerros">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A9DDF8"/><stop offset=".42" stop-color="#D9EFFB"/><stop offset=".72" stop-color="#FFE6D2"/><stop offset="1" stop-color="#FFF6EE"/></linearGradient>
+<radialGradient id="sun" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFD7B0" stop-opacity=".75"/><stop offset="1" stop-color="#FF8A3D" stop-opacity="0"/></radialGradient>
+<linearGradient id="tank" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#E4E8EC"/><stop offset=".55" stop-color="#C1C7CE"/><stop offset="1" stop-color="#97A1AB"/></linearGradient>
+<linearGradient id="pole" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6f5b4c"/><stop offset="1" stop-color="#4a3b30"/></linearGradient>
+</defs>
+<rect width="1200" height="400" fill="url(#sky)"/>
+<circle cx="1040" cy="100" r="130" fill="url(#sun)"/><circle cx="1040" cy="100" r="46" fill="#F9A15F" opacity=".95"/>
+<g fill="#FFFFFF" opacity=".92"><ellipse cx="190" cy="78" rx="62" ry="16"/><ellipse cx="236" cy="68" rx="42" ry="14"/><ellipse cx="640" cy="56" rx="70" ry="15"/><ellipse cx="690" cy="48" rx="40" ry="12"/><ellipse cx="930" cy="150" rx="52" ry="12"/></g>
+<path d="M0 230 C120 170 220 160 330 205 C430 245 520 150 650 168 C760 184 840 230 960 190 C1060 156 1130 170 1200 205 L1200 400 L0 400Z" fill="#CFDFEA"/>
+<path d="M0 262 C90 222 190 216 290 248 C400 284 500 214 620 226 C740 238 820 272 940 246 C1040 224 1120 232 1200 258 L1200 400 L0 400Z" fill="#F9D8BE"/>
+<path d="M0 300 C110 272 210 274 320 296 C430 318 540 276 660 284 C780 292 860 322 980 302 C1070 288 1140 290 1200 304 L1200 400 L0 400Z" fill="#F1BC97"/>
+<path d="M0 352 C200 336 380 350 600 346 C820 342 1000 334 1200 350 L1200 400 L0 400Z" fill="#FCEBDD"/>
+<path d="M0 372 C260 358 520 370 760 364 C960 360 1100 362 1200 370" fill="none" stroke="#FEFEFF" stroke-width="3" stroke-dasharray="14 10" opacity=".8"/>
+<g opacity="0.75" transform="translate(60,262)">
+<rect x="0" y="0" width="29.700000000000003" height="18.700000000000003" fill="#F4F7F9" stroke="#9fb0bd" stroke-width="0.77"/>
+<polygon points="-3.3000000000000003,0 14.850000000000001,-13.200000000000001 33.0,0" fill="#EDB08A"/>
+<polygon points="-3.3000000000000003,0 14.850000000000001,-13.200000000000001 14.850000000000001,0" fill="#000" opacity=".08"/>
+<rect x="4.455" y="5.61" width="6.050000000000001" height="6.050000000000001" fill="#79D1FF" stroke="#7fa6bd" stroke-width="0.55"/>
+<rect x="18.414" y="7.106000000000001" width="6.6000000000000005" height="11.594000000000001" fill="#8a6a55"/>
+</g>
+<g opacity="0.75" transform="translate(135,250)">
+<rect x="0" y="0" width="27.0" height="17.0" fill="#F4F7F9" stroke="#9fb0bd" stroke-width="0.7"/>
+<polygon points="-3.0,0 13.5,-12.0 30.0,0" fill="#EDB08A"/>
+<polygon points="-3.0,0 13.5,-12.0 13.5,0" fill="#000" opacity=".08"/>
+<rect x="4.05" y="5.1" width="5.5" height="5.5" fill="#79D1FF" stroke="#7fa6bd" stroke-width="0.5"/>
+<rect x="16.74" y="6.46" width="6.0" height="10.54" fill="#8a6a55"/>
+</g>
+<g opacity="0.8" transform="translate(235,268)">
+<rect x="0" y="0" width="32.4" height="20.4" fill="#F4F7F9" stroke="#9fb0bd" stroke-width="0.84"/>
+<polygon points="-3.5999999999999996,0 16.2,-14.399999999999999 36.0,0" fill="#EDB08A"/>
+<polygon points="-3.5999999999999996,0 16.2,-14.399999999999999 16.2,0" fill="#000" opacity=".08"/>
+<rect x="4.859999999999999" y="6.119999999999999" width="6.6" height="6.6" fill="#79D1FF" stroke="#7fa6bd" stroke-width="0.6"/>
+<rect x="20.087999999999997" y="7.752" width="7.199999999999999" height="12.648" fill="#8a6a55"/>
+</g>
+<g opacity="0.7" transform="translate(420,240)">
+<rect x="0" y="0" width="24.3" height="15.3" fill="#F4F7F9" stroke="#9fb0bd" stroke-width="0.63"/>
+<polygon points="-2.7,0 12.15,-10.8 27.0,0" fill="#EDB08A"/>
+<polygon points="-2.7,0 12.15,-10.8 12.15,0" fill="#000" opacity=".08"/>
+<rect x="3.645" y="4.59" width="4.95" height="4.95" fill="#79D1FF" stroke="#7fa6bd" stroke-width="0.45"/>
+<rect x="15.066" y="5.814" width="5.4" height="9.486" fill="#8a6a55"/>
+</g>
+<g opacity="0.75" transform="translate(520,255)">
+<rect x="0" y="0" width="27.0" height="17.0" fill="#F4F7F9" stroke="#9fb0bd" stroke-width="0.7"/>
+<polygon points="-3.0,0 13.5,-12.0 30.0,0" fill="#EDB08A"/>
+<polygon points="-3.0,0 13.5,-12.0 13.5,0" fill="#000" opacity=".08"/>
+<rect x="4.05" y="5.1" width="5.5" height="5.5" fill="#79D1FF" stroke="#7fa6bd" stroke-width="0.5"/>
+<rect x="16.74" y="6.46" width="6.0" height="10.54" fill="#8a6a55"/>
+</g>
+<g opacity="0.75" transform="translate(1010,250)">
+<rect x="0" y="0" width="27.0" height="17.0" fill="#F4F7F9" stroke="#9fb0bd" stroke-width="0.7"/>
+<polygon points="-3.0,0 13.5,-12.0 30.0,0" fill="#EDB08A"/>
+<polygon points="-3.0,0 13.5,-12.0 13.5,0" fill="#000" opacity=".08"/>
+<rect x="4.05" y="5.1" width="5.5" height="5.5" fill="#79D1FF" stroke="#7fa6bd" stroke-width="0.5"/>
+<rect x="16.74" y="6.46" width="6.0" height="10.54" fill="#8a6a55"/>
+</g>
+<g opacity="0.75" transform="translate(1105,262)">
+<rect x="0" y="0" width="29.700000000000003" height="18.700000000000003" fill="#F4F7F9" stroke="#9fb0bd" stroke-width="0.77"/>
+<polygon points="-3.3000000000000003,0 14.850000000000001,-13.200000000000001 33.0,0" fill="#EDB08A"/>
+<polygon points="-3.3000000000000003,0 14.850000000000001,-13.200000000000001 14.850000000000001,0" fill="#000" opacity=".08"/>
+<rect x="4.455" y="5.61" width="6.050000000000001" height="6.050000000000001" fill="#79D1FF" stroke="#7fa6bd" stroke-width="0.55"/>
+<rect x="18.414" y="7.106000000000001" width="6.6000000000000005" height="11.594000000000001" fill="#8a6a55"/>
+</g>
+<g opacity="1" transform="translate(40,318)">
+<rect x="0" y="0" width="54.0" height="34.0" fill="#FEFEFF" stroke="#9fb0bd" stroke-width="1.4"/>
+<polygon points="-6.0,0 27.0,-24.0 60.0,0" fill="#F58A42"/>
+<polygon points="-6.0,0 27.0,-24.0 27.0,0" fill="#000" opacity=".08"/>
+<rect x="8.1" y="10.2" width="11.0" height="11.0" fill="#79D1FF" stroke="#7fa6bd" stroke-width="1.0"/>
+<rect x="33.48" y="12.92" width="12.0" height="21.08" fill="#8a6a55"/>
+</g>
+<g opacity="1" transform="translate(170,330)">
+<rect x="0" y="0" width="62.099999999999994" height="39.099999999999994" fill="#FEFEFF" stroke="#9fb0bd" stroke-width="1.6099999999999999"/>
+<polygon points="-6.8999999999999995,0 31.049999999999997,-27.599999999999998 69.0,0" fill="#F58A42"/>
+<polygon points="-6.8999999999999995,0 31.049999999999997,-27.599999999999998 31.049999999999997,0" fill="#000" opacity=".08"/>
+<rect x="9.315" y="11.729999999999999" width="12.649999999999999" height="12.649999999999999" fill="#79D1FF" stroke="#7fa6bd" stroke-width="1.15"/>
+<rect x="38.501999999999995" y="14.857999999999999" width="13.799999999999999" height="24.241999999999997" fill="#8a6a55"/>
+</g>
+<g opacity="1" transform="translate(330,322)">
+<rect x="0" y="0" width="51.3" height="32.3" fill="#FEFEFF" stroke="#9fb0bd" stroke-width="1.3299999999999998"/>
+<polygon points="-5.699999999999999,0 25.65,-22.799999999999997 57.0,0" fill="#F58A42"/>
+<polygon points="-5.699999999999999,0 25.65,-22.799999999999997 25.65,0" fill="#000" opacity=".08"/>
+<rect x="7.694999999999999" y="9.69" width="10.45" height="10.45" fill="#79D1FF" stroke="#7fa6bd" stroke-width="0.95"/>
+<rect x="31.805999999999997" y="12.274" width="11.399999999999999" height="20.026" fill="#8a6a55"/>
+</g>
+<g opacity="1" transform="translate(520,336)">
+<rect x="0" y="0" width="59.400000000000006" height="37.400000000000006" fill="#FEFEFF" stroke="#9fb0bd" stroke-width="1.54"/>
+<polygon points="-6.6000000000000005,0 29.700000000000003,-26.400000000000002 66.0,0" fill="#F58A42"/>
+<polygon points="-6.6000000000000005,0 29.700000000000003,-26.400000000000002 29.700000000000003,0" fill="#000" opacity=".08"/>
+<rect x="8.91" y="11.22" width="12.100000000000001" height="12.100000000000001" fill="#79D1FF" stroke="#7fa6bd" stroke-width="1.1"/>
+<rect x="36.828" y="14.212000000000002" width="13.200000000000001" height="23.188000000000002" fill="#8a6a55"/>
+</g>
+<g opacity="1" transform="translate(1010,326)">
+<rect x="0" y="0" width="56.7" height="35.7" fill="#FEFEFF" stroke="#9fb0bd" stroke-width="1.47"/>
+<polygon points="-6.300000000000001,0 28.35,-25.200000000000003 63.0,0" fill="#F58A42"/>
+<polygon points="-6.300000000000001,0 28.35,-25.200000000000003 28.35,0" fill="#000" opacity=".08"/>
+<rect x="8.505" y="10.71" width="11.55" height="11.55" fill="#79D1FF" stroke="#7fa6bd" stroke-width="1.05"/>
+<rect x="35.154" y="13.566" width="12.600000000000001" height="22.134" fill="#8a6a55"/>
+</g>
+<g opacity="1" transform="translate(1105,318)">
+<rect x="0" y="0" width="54.0" height="34.0" fill="#FEFEFF" stroke="#9fb0bd" stroke-width="1.4"/>
+<polygon points="-6.0,0 27.0,-24.0 60.0,0" fill="#F58A42"/>
+<polygon points="-6.0,0 27.0,-24.0 27.0,0" fill="#000" opacity=".08"/>
+<rect x="8.1" y="10.2" width="11.0" height="11.0" fill="#79D1FF" stroke="#7fa6bd" stroke-width="1.0"/>
+<rect x="33.48" y="12.92" width="12.0" height="21.08" fill="#8a6a55"/>
+</g>
+<!-- postes lejanos -->
+<g stroke="#6f5b4c" stroke-width="5" opacity=".6"><line x1="470" y1="196" x2="470" y2="262"/><line x1="1000" y1="188" x2="1000" y2="258"/></g>
+<g stroke="#4a5661" stroke-width="2" fill="none" opacity=".6"><path d="M470 204 C560 226 700 214 800 140"/><path d="M1000 196 C940 212 880 190 858 140"/></g>
+<!-- poste y transformador -->
+<rect x="826" y="118" width="14" height="262" fill="url(#pole)"/>
+<rect x="760" y="130" width="146" height="10" rx="3" fill="#4a5661"/>
+<g fill="#79D1FF" stroke="#3d7fa0" stroke-width="1.5"><rect x="774" y="116" width="10" height="16" rx="3"/><rect x="828" y="108" width="10" height="16" rx="3"/><rect x="882" y="116" width="10" height="16" rx="3"/></g>
+<g stroke="#4a5661" stroke-width="2.2" fill="none"><path d="M779 118 C700 140 640 150 560 196"/><path d="M887 118 C960 140 1040 170 1140 214"/></g>
+<!-- tanque -->
+<ellipse cx="833" cy="288" rx="36" ry="10" fill="#000" opacity=".12"/>
+<rect x="797" y="180" width="72" height="104" rx="9" fill="url(#tank)" stroke="#7f8a95" stroke-width="2"/>
+<ellipse cx="833" cy="180" rx="36" ry="10" fill="#DDE2E7" stroke="#7f8a95" stroke-width="2"/>
+<rect x="797" y="222" width="72" height="14" fill="#F58A42"/>
+<g fill="#FEFEFF" stroke="#7f8a95" stroke-width="1.4"><rect x="812" y="150" width="9" height="30" rx="3"/><rect x="829" y="146" width="9" height="34" rx="3"/><rect x="846" y="150" width="9" height="30" rx="3"/></g>
+<g stroke="#4a5661" stroke-width="2.2" fill="none"><path d="M816.500 152 L779 140"/><path d="M833.500 148 L833 124"/><path d="M850.500 152 L887 140"/></g>
+<rect x="811" y="244" width="44" height="22" rx="3" fill="#FEFEFF" stroke="#7f8a95" stroke-width="1.2"/>
+<path d="M817 255 h8 M829 255 h8 M841 255 h8" stroke="#F58A42" stroke-width="2.4" stroke-linecap="round"/>
+<g stroke="#5c4a3c" stroke-width="5" stroke-linecap="round"><line x1="797" y1="196" x2="869" y2="196"/><line x1="797" y1="268" x2="869" y2="268"/></g>
+<!-- vínculos transformador -> clientes -->
+<g fill="none" stroke="#FEFEFF" stroke-width="7" stroke-linecap="round" opacity=".85">
+<path d="M797 262 C700 280 600 300 548 322"/><path d="M797 270 C640 300 440 300 356 318"/>
+<path d="M869 262 C940 276 1010 290 1034 322"/><path d="M869 272 C960 300 1090 290 1130 314"/></g>
+<g fill="none" stroke="#F58A42" stroke-width="3" stroke-dasharray="9 7" stroke-linecap="round">
+<path d="M797 262 C700 280 600 300 548 322"/><path d="M797 270 C640 300 440 300 356 318"/>
+<path d="M869 262 C940 276 1010 290 1034 322"/><path d="M869 272 C960 300 1090 290 1130 314"/></g>
+<g fill="#F58A42" stroke="#FEFEFF" stroke-width="2"><circle cx="548" cy="322" r="6"/><circle cx="356" cy="318" r="6"/><circle cx="1034" cy="322" r="6"/><circle cx="1130" cy="314" r="6"/></g>
+</svg>

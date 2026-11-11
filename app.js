@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.0.0';
+const VER = '1.0.9';
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -35,17 +35,18 @@ const dbPutKV = (k, v) => tx('kv', 'readwrite', s => s.put(v, k));
 const ACTIVIDADES = ['RESIDENCIAL', 'COMERCIAL', 'INDUSTRIAL', 'OFICIAL', 'OTRO'];
 const PLACAS = ['LA PLACA CORRESPONDE CON EL ROTULO DE LA OT', 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT', 'NO TIENE PLACA VISIBLE'];
 const OTRA = 'OTRA (ESCRIBIR)', SINMED = 'SIN MEDIDOR', HOTRO = 'OTRO (DESCRIBIR EN OBSERVACIÓN)';
-const defaultCfg = () => ({
-  tecnicos: [],
-  marcas: ['SKAITEKS', 'NINGBO', 'HEXING', 'COMPLANT', 'ENEL', '@METER', 'KRIZIK', 'NANSEN', 'ITRON', 'LANDIS+GYR', 'ELSTER', 'HOLLEY', 'CHINT'],
-  hallazgos: ['SIN HALLAZGO', 'MEDIDOR SIN SELLOS / SELLOS VIOLADOS', 'MEDIDOR MANIPULADO O ALTERADO', 'MEDIDOR DETENIDO O SIN REGISTRO', 'MEDIDOR CON LECTURA INCONSISTENTE', 'MEDIDOR NO CORRESPONDE A LA CUENTA (CRUCE)', 'CONEXIÓN DIRECTA (SIN MEDIDOR)', 'PUENTE O BYPASS EN LA MEDIDA', 'DERIVACIÓN CLANDESTINA EN LA RED', 'ACOMETIDA EN MAL ESTADO (PÉRDIDA TÉCNICA)', 'EMPALMES O CONEXIONES FLOJAS / SULFATADAS', 'CARGA NO REGISTRADA / USO DIFERENTE AL CONTRATADO', 'CLIENTE CONECTADO A OTRO TRANSFORMADOR', 'CLIENTE NO UBICADO / DIRECCIÓN NO CORRESPONDE', 'SERVICIO SUSPENDIDO CON ENERGÍA', 'NO PERMITE INSPECCIÓN / SIN ACCESO A LA MEDIDA', 'PREDIO DESOCUPADO O DEMOLIDO', 'CARGA COMUNITARIA O ALUMBRADO SIN MEDIDA', HOTRO],
-  exigirHuella: true, credId: null, ultimoTecnico: '', umbralPrec: 30
-});
+const HALLAZGOS = ['SIN HALLAZGO', 'MEDIDOR SIN SELLOS / SELLOS VIOLADOS', 'MEDIDOR MANIPULADO O ALTERADO', 'MEDIDOR DETENIDO O SIN REGISTRO', 'MEDIDOR CON LECTURA INCONSISTENTE', 'MEDIDOR NO CORRESPONDE A LA CUENTA (CRUCE)', 'CONEXIÓN DIRECTA (SIN MEDIDOR)', 'PUENTE O BYPASS EN LA MEDIDA', 'DERIVACIÓN CLANDESTINA EN LA RED', 'ACOMETIDA EN MAL ESTADO (PÉRDIDA TÉCNICA)', 'EMPALMES O CONEXIONES FLOJAS / SULFATADAS', 'CARGA NO REGISTRADA / USO DIFERENTE AL CONTRATADO', 'CLIENTE CONECTADO A OTRO TRANSFORMADOR', 'CLIENTE NO UBICADO / DIRECCIÓN NO CORRESPONDE', 'SERVICIO SUSPENDIDO CON ENERGÍA', 'NO PERMITE INSPECCIÓN / SIN ACCESO A LA MEDIDA', 'PREDIO DESOCUPADO O DEMOLIDO', 'CARGA COMUNITARIA O ALUMBRADO SIN MEDIDA', HOTRO];
+// Marcas: las que trae la ficha del Excel (CLIENTES.marca_medidor) + las que se escriban con "OTRA"
+const MARCAS_BASE = ['SKAITEKS', 'NINGBO', 'HEXING', 'COMPLANT', 'ENEL', '@METER', 'KRIZIK', 'NANSEN'];
+const marcasList = () => { const m = new Set(MARCAS_BASE); Object.values(S.cds).forEach(cd => cd.ficha.forEach(f => { if (f.marca) m.add(f.marca); })); (cfg.marcasExtra || []).forEach(x => m.add(x)); return [...m]; };
+const defaultCfg = () => ({ ultimoTecnico: '', marcasExtra: [] });
+// Técnicos: activos de AP_Usuarios (2026-09-28)
+const TECNICOS = ["ACOSTA JUAN CARLOS", "AGUIAR OLIVERA EDUVINO", "AMAYA TRIANA LUIS ALEJANDRO", "ARDILA AMADO ELKIN", "BABILONIA THOMAS FERNANDO LUIS", "BAEZ JUAN CARLOS", "BARRAGAN BARRERA ANA MARIA", "BUITRAGO CUESTA JONATHAN ALEXIS", "CAÑON GONZALEZ RICARDO IGNACIO", "CARDENAS GOMEZ RAMIRO", "CASTAÑEDA MINZON HERNAN", "CASTELLANOS KILLY SEBASTIAN", "DAZA MORENO DUBAN STIVEN", "DIAZ CATILLA CARLOS ALBERTO", "DIAZ RODRIGUEZ NELSON FERNANDO", "FERNANDEZ SALAS JOHAN SEBASTIAN", "FONSECA SANTANA WILLIAM GIUSEPPE", "GALINDO TORRES HELVER MARTIN", "GONZALEZ CIFUENTES SOFIA LORENA", "GUERRERO RODRIGUEZ KEVIN CAMILO", "GUEVARA PÉREZ ANTONY", "HEIDI YURISSA DIAZ SANABRIA", "HERNANDEZ SILVA JHON EDWAR", "IZQUIERDO MURCIA CARLOS EDUARDO", "JIMENEZ CASTILLO OSCAR FERNANDO", "LOPEZ SUAREZ RICARDO ENRIQUE", "OLIVERO ROCHA IVAN DAVID", "ORTIZ RODRIGUEZ CARLOS FELIPE", "PADILLA ALISON", "PERDOMO RAMIREZ CRISTIAN DAVID", "PEREZ PIRA RIVEL ESTEBAN", "PEREZ ROA JOSE ALFREDO", "PINEDA AGUILAR WILKER DE JESUS", "PINZON TOVAR BRAYAN FELIPE", "PORRAS RODRIGUEZ BRIAM STEVENS", "QUEMBA CAROLINA", "QUIJANO CARDOSO JOHN JAIRO", "RAMIREZ BARAHONA FERNEY", "RAMIREZ CEPEDA BRAYAN HERNAN", "RAMIREZ MARTINEZ MIGUEL ALEJANDRO", "REYES HERNANDEZ SEBASTIAN DAVID", "ROBAYO BOHORQUEZ CARLOS ENRIQUE", "ROJAS CRUZ KEVIN YESSITH", "ROMERO JOHN FREDY", "ROMERO SERNA LUIS CAMILO", "RONCANCIO RINCON FABIAN ANDRES", "SUAREZ CADENA CARLOS FELIPE", "TIQUE TIQUE YECID", "TRIANA SOLER JOHN ALEXANDER", "VALBUENA LOZANO BRAYAN DAVID", "VARGAS ROMERO JAIRO ANDRES", "VERGARA MANRIQUE VICTOR HERNAN"];
 let cfg = defaultCfg();
 const saveCfg = () => dbPutKV('cfg', cfg);
 
 // ---------- estado ----------
-const S = { view: 'home', tab: 'lista', cds: {}, cur: null, q: '', flt: 'todos', form: null, from: 'reg', huellaOK: false, pos: null, sel: null, _autoI: null };
+const S = { logo: 'logo.png', view: 'home', tab: 'lista', cds: {}, cur: null, q: '', flt: 'todos', form: null, from: 'reg', pos: null, sel: null, _autoI: null };
 const curCD = () => S.cur ? S.cds[S.cur] : null;
 const saveCD = cd => dbPutCD(cd);
 
@@ -113,15 +114,15 @@ function clasif(cd, r, m) {
 }
 
 // ---------- exportación: Excel con 3 tablas ----------
-const COLS = ['ID_REGISTRO', 'CD', 'OT', 'FECHA_HORA', 'TECNICO', 'TIPO_USUARIO', 'CLASIFICACION', 'NRO_SERVICIO', 'NRO_CUENTA', 'NRO_MEDIDOR', 'MARCA_MEDIDOR', 'LECTURA_ENERGIA_ACTIVA', 'ACTIVIDAD_ECONOMICA', 'DIRECCION', 'LATITUD', 'LONGITUD', 'PRECISION_M', 'FECHA_CAPTURA_COORD', 'HALLAZGO_PERDIDAS', 'OBSERVACION', 'HUELLA', 'FECHA_HUELLA', 'PLACA_TRANSFORMADOR', 'FICHA_MEDIDOR', 'FICHA_MARCA', 'DIFIERE_MEDIDOR'];
-const WIDTHS = [14, 11, 14, 19, 22, 13, 30, 14, 12, 14, 14, 12, 16, 34, 12, 12, 10, 19, 40, 40, 8, 19, 40, 14, 14, 10];
+const COLS = ['ID_REGISTRO', 'CD', 'OT', 'FECHA_HORA', 'TECNICO', 'TIPO_USUARIO', 'CLASIFICACION', 'NRO_SERVICIO', 'NRO_CUENTA', 'NRO_MEDIDOR', 'MARCA_MEDIDOR', 'LECTURA_ENERGIA_ACTIVA', 'ACTIVIDAD_ECONOMICA', 'DIRECCION', 'LATITUD', 'LONGITUD', 'PRECISION_M', 'FECHA_CAPTURA_COORD', 'HALLAZGO_PERDIDAS', 'OBSERVACION', 'PLACA_TRANSFORMADOR', 'FICHA_MEDIDOR', 'FICHA_MARCA', 'DIFIERE_MEDIDOR'];
+const WIDTHS = [14, 11, 14, 19, 22, 13, 30, 14, 12, 14, 14, 12, 16, 34, 12, 12, 10, 19, 40, 40, 40, 14, 14, 10];
 function buildSheets(cd) {
   const rows = { 1: [], 2: [], 3: [] };
   [...cd.registros].sort((a, b) => a.creado.localeCompare(b.creado)).forEach(r => {
     const m = r.tipo === 'CLIENTE' ? matchFicha(cd, r) : { i: null }, c = clasif(cd, r, m); if (!c) return;
     const f = m.i != null ? cd.ficha[m.i] : null;
     const dif = f && f.medidor && r.medidor && idn(f.medidor) !== idn(r.medidor) ? 'SI' : (f ? 'NO' : '');
-    rows[c].push([r.id, cd.id, r.ot || cd.ot || '', r.fecha || '', r.tecnico || '', r.tipo === 'UNC' ? 'UNC' : 'CLIENTE', CL[c].t, r.servicio || '', r.cuenta || '', r.medidor || '', r.marca || '', num(r.lectura), r.actividad || '', r.direccion || (f ? f.direccion : ''), r.lat, r.lon, r.prec == null ? null : Math.round(r.prec * 10) / 10, r.capAt ? stamp(new Date(r.capAt)) : '', r.hallazgo || '', r.obs || '', r.huella ? 'SI' : 'NO', r.huella ? stamp(new Date(r.huella.at)) : '', cd.placa || '', f ? f.medidor : '', f ? f.marca : '', dif]);
+    rows[c].push([r.id, cd.id, cd.ot || '', r.fecha || '', r.tecnico || '', r.tipo === 'UNC' ? 'UNC' : 'CLIENTE', CL[c].t, r.servicio || '', r.cuenta || '', r.medidor || '', r.marca || '', num(r.lectura), r.actividad || '', r.direccion || (f ? f.direccion : ''), r.lat, r.lon, r.prec == null ? null : Math.round(r.prec * 10) / 10, r.capAt ? stamp(new Date(r.capAt)) : '', r.hallazgo || '', r.obs || '', cd.placa || '', f ? f.medidor : '', f ? f.marca : '', dif]);
   });
   return [
     { name: '1_EN_FICHA_DEL_CIRCUITO', table: 'tblEnFichaDelCircuito', columns: COLS, rows: rows[1], widths: WIDTHS },
@@ -149,7 +150,9 @@ async function exportarJSON(cd) {
 // ---------- utilidades de interfaz ----------
 let toastT; function toast(msg, ms = 2600) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms); }
 const opts = (list, sel, ph) => (ph != null ? `<option value="">${esc(ph)}</option>` : '') + list.map(o => `<option value="${esc(o)}"${o === sel ? ' selected' : ''}>${esc(o)}</option>`).join('');
-const LOGO = `<svg width="34" height="34" viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#fff" fill-opacity=".22"/><circle cx="40" cy="46" r="22" fill="none" stroke="#fff" stroke-width="6"/><circle cx="60" cy="46" r="22" fill="none" stroke="#fff" stroke-width="6"/><path d="M6 46h12M82 46h12" stroke="#fff" stroke-width="6" stroke-linecap="round"/><text x="50" y="90" font-size="19" font-weight="800" fill="#fff" text-anchor="middle" font-family="Manrope,Arial,sans-serif">VCT</text></svg>`;
+const ICO = { back: '<path d="M15 5l-7 7 7 7"/>', list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>', plus: '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>', pin: '<path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>', sum: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 15v-3M12 15V9M16 15v-5"/>', mic: '<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>' };
+const ic = k => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICO[k]}</svg>`;
+const LOGO = `<svg width="36" height="36" viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="24" fill="#FF6600"/><circle cx="40" cy="46" r="21" fill="none" stroke="#fff" stroke-width="6"/><circle cx="60" cy="46" r="21" fill="none" stroke="#fff" stroke-width="6"/><path d="M8 46h11M81 46h11" stroke="#fff" stroke-width="6" stroke-linecap="round"/><text x="50" y="88" font-size="18" font-weight="800" fill="#fff" text-anchor="middle" font-family="Manrope,Arial,sans-serif">VCT</text></svg>`;
 const FOOT = '<div class="foot">GS VCT v' + VER + ' · Desarrollado por Heidi Díaz</div>';
 const badge = (c, t) => `<span class="badge ${c}">${esc(t)}</span>`;
 
@@ -164,23 +167,23 @@ function stats(cd) {
 
 // ---------- vistas ----------
 function header() {
-  const cd = curCD();
-  if (S.view === 'home') return `<header><div class="brand">${LOGO}<div><h1>GS VCT</h1><small>Vínculo Cliente – Transformador</small></div></div><button class="ib" data-act="ajustes" aria-label="Ajustes">⚙</button></header>`;
-  if (S.view === 'ajustes') return `<header><button class="ib" data-act="home" aria-label="Volver">←</button><div class="brand"><div><h1>Ajustes</h1><small>Catálogos, técnicos y respaldo</small></div></div></header>`;
+  const cd = curCD(); const lg = S.logo ? `<img class="lg" alt="" src="${esc(S.logo)}" onerror="this.remove()">` : '';
+  if (S.view === 'home') return `<header><div class="brand">${LOGO}<div><h1>GS VCT</h1><small>Vínculo Cliente – Transformador</small></div></div>${lg}</header>`;
   const st = stats(cd);
-  return `<header><button class="ib" data-act="home" aria-label="Volver">←</button><div class="brand"><div><h1>${esc(cd.id)}</h1><small>${esc(cd.meta.circuito)}${cd.meta.potencia ? ' · ' + cd.meta.potencia + ' kVA' : ''}${cd.meta.tipoRed ? ' · ' + esc(cd.meta.tipoRed) : ''}</small></div></div><div class="prog">${st.visit}/${st.total}</div></header>`;
+  return `<header><button class="ib" data-act="home" aria-label="Volver">${ic('back')}</button><div class="brand"><div><h1>${esc(cd.id)}</h1><small>${esc(cd.meta.circuito)}${cd.meta.potencia ? ' · ' + cd.meta.potencia + ' kVA' : ''}${cd.meta.tipoRed ? ' · ' + esc(cd.meta.tipoRed) : ''}${cd.ot ? ' · OT ' + esc(cd.ot) : ''}</small></div></div>${lg}<div class="prog">${st.visit}/${st.total}</div></header>`;
 }
 function nav() {
   if (S.view !== 'cd') return '';
-  const t = [['lista', '☰', 'Clientes'], ['reg', '✚', 'Registrar'], ['mapa', '⌖', 'Mapa'], ['res', '▤', 'Resumen']];
-  return `<nav class="bottom">${t.map(([k, i, l]) => `<button data-tab="${k}" class="${S.tab === k ? 'on' : ''}"><span>${i}</span>${l}</button>`).join('')}</nav>`;
+  const t = [['lista', ic('list'), 'Clientes'], ['reg', ic('plus'), 'Registrar'], ['mapa', ic('pin'), 'Mapa'], ['res', ic('sum'), 'Resumen']];
+  return `<nav class="bottom">${t.map(([k, i, l]) => `<button data-tab="${k}" class="${S.tab === k ? 'on' : ''}">${i}${l}</button>`).join('')}</nav>`;
 }
 function viewHome() {
   const list = Object.values(S.cds).sort((a, b) => b.creado.localeCompare(a.creado));
-  return `<div class="card"><h2>Crear CD desde Excel</h2>
+  return `<div class="hero"><img src="banner.svg" alt=""><div class="ttl"><b>Vínculo Cliente –<br>Transformador</b></div></div><div class="card"><h2>Crear CD desde Excel</h2>
     <p>Carga el Excel del transformador (hojas <b>CLIENTES</b> y <b>BALANCES</b>). Si trae varios CD, se crean todos.</p>
     <label class="btn pri full"><input type="file" id="fx" accept=".xlsx" hidden>Cargar Excel del CD</label>
-    <p style="font-size:12.5px;color:var(--mut)">Funciona sin conexión. Cada CD queda separado de los demás.</p></div>
+    <p style="font-size:12.5px;color:var(--mut)">Funciona sin conexión. Cada CD queda separado de los demás.</p>
+    <label class="btn sm"><input type="file" id="fj" accept=".json" hidden>Restaurar respaldo (.json)</label></div>
     ${list.length ? '<h3>CD cargados</h3>' : '<div class="note">Aún no hay CD. Carga el Excel para empezar.</div>'}
     ${list.map(cd => { const s = stats(cd); return `<button class="it" data-act="open-cd" data-id="${esc(cd.id)}"><div class="t"><span>${esc(cd.id)} <span style="font-weight:500;color:var(--mut)">· ${esc(cd.meta.circuito)}</span></span><span class="badge ${s.pend === 0 && s.total ? 'ok' : 'pend'}">${s.visit}/${s.total}</span></div><div class="s">${s.n} registros · ${s.t3} fuera de ficha · ${cd.exportadoEn ? 'exportado ' + esc(stamp(new Date(cd.exportadoEn)).slice(0, 16)) : 'sin exportar'}</div></button>`; }).join('')}
     ${FOOT}`;
@@ -212,41 +215,43 @@ function listHTML(cd) {
   }).join('') + (out.length > 400 ? '<div class="note">Mostrando 400; usa el buscador para acotar.</div>' : '');
 }
 
-function newForm(tipo = 'CLIENTE') { return { id: null, tipo, servicio: '', cuenta: '', medidor: '', marca: '', marcaOtra: '', lectura: '', actividad: '', pertenece: null, hallazgo: '', obs: '', direccion: '', lat: null, lon: null, prec: null, capAt: null, tecnico: cfg.ultimoTecnico || '', huella: null }; }
+function newForm(tipo = 'CLIENTE') { return { id: null, tipo, servicio: '', cuenta: '', medidor: '', marca: '', marcaOtra: '', lectura: '', actividad: '', pertenece: null, hallazgo: '', obs: '', direccion: '', lat: null, lon: null, prec: null, capAt: null, tecnico: cfg.ultimoTecnico || '' }; }
 function formFromRec(r) {
   const f = Object.assign(newForm(r.tipo), JSON.parse(JSON.stringify(r)));
-  const lista = [...cfg.marcas, SINMED]; f.marcaOtra = ''; if (f.marca && !lista.includes(f.marca)) { f.marcaOtra = f.marca; f.marca = OTRA; }
+  const lista = [...marcasList(), SINMED]; f.marcaOtra = ''; if (f.marca && !lista.includes(f.marca)) { f.marcaOtra = f.marca; f.marca = OTRA; }
   f.lectura = r.lectura == null ? '' : String(r.lectura); return f;
 }
 function viewReg(cd) {
   const f = S.form || (S.form = newForm()), unc = f.tipo === 'UNC';
-  return `<div class="card">
+  return `<div class="card"><h2>Usuario</h2>
+    <div class="fld"><label class="req">N° de OT (una por CD)</label><input type="text" data-cdf="ot" value="${esc(cd.ot)}" autocomplete="off" placeholder="Orden de trabajo de ${esc(cd.id)}"></div>
     <div class="fld"><label>Tipo de usuario a vincular</label><div class="seg" data-seg="tipo"><button data-v="CLIENTE" class="${!unc ? 'on' : ''}">CLIENTE CON N° DE CUENTA</button><button data-v="UNC" class="${unc ? 'on' : ''}">USUARIO NO CLIENTE (UNC)</button></div></div>
     <div data-show="cli" class="${unc ? 'hidden' : ''}">
       <div class="fld"><label class="req">N° de servicio eléctrico</label><input type="text" inputmode="numeric" data-f="servicio" value="${esc(f.servicio)}" autocomplete="off"></div>
       <div class="fld"><label class="req">N° de cuenta</label><input type="text" inputmode="numeric" data-f="cuenta" value="${esc(f.cuenta)}" autocomplete="off"></div>
       <div class="fld"><label class="req">N° de medidor</label><input type="text" inputmode="text" data-f="medidor" value="${esc(f.medidor)}" autocomplete="off"></div>
       <div id="matchCard"></div>
-      <div class="fld"><label class="req">Marca del medidor</label><select data-f="marca">${opts([...cfg.marcas, SINMED, OTRA], f.marca, 'Selecciona…')}</select></div>
+      <div class="fld"><label class="req">Marca del medidor</label><select data-f="marca">${opts([...marcasList(), SINMED, OTRA], f.marca, 'Selecciona…')}</select></div>
       <div class="fld ${f.marca === OTRA ? '' : 'hidden'}" data-show="otra"><label class="req">Escribe la marca</label><input type="text" data-f="marcaOtra" value="${esc(f.marcaOtra)}" style="text-transform:uppercase"></div>
       <div class="fld ${f.marca === SINMED ? 'hidden' : ''}" data-show="lect"><label class="req">Lectura de energía activa (kWh)</label><input type="number" inputmode="decimal" step="any" data-f="lectura" value="${esc(f.lectura)}"><small id="lectHint"></small></div>
       <div class="fld"><label class="req">¿Está conectado a este transformador (${esc(cd.id)})?</label><div class="seg" data-seg="pertenece"><button data-v="1" class="${f.pertenece === true ? 'on' : ''}">SÍ, es de este circuito</button><button data-v="0" class="${f.pertenece === false ? 'on no' : ''}">NO es de este circuito</button></div></div>
     </div>
-    <div class="fld"><label>Clasificación automática</label><div id="clasif"></div></div>
+    <div class="fld"><label>Clasificación automática</label><div id="clasif"></div></div></div>
+    <div class="card"><h2>Ubicación y hallazgo</h2>
     <div class="fld"><label class="req">Actividad económica</label><select data-f="actividad">${opts(ACTIVIDADES, f.actividad, 'Selecciona…')}</select></div>
     <div class="fld"><label>Dirección${unc ? ' del usuario no cliente (opcional)' : ' (la de la ficha se conserva; escribe solo si cambia)'}</label><input type="text" data-f="direccion" value="${esc(f.direccion)}" style="text-transform:uppercase"></div>
     <div class="fld"><label class="${unc ? 'req' : ''}">Coordenadas${unc ? ' (obligatorias para UNC)' : ' (opcional: actualizar)'}</label><div class="geo" id="geo">${geoHTML(f)}</div></div>
-    <div class="fld"><label class="req">Hallazgo técnico de pérdidas</label><select data-f="hallazgo">${opts(cfg.hallazgos, f.hallazgo, 'Selecciona…')}</select></div>
-    <div class="fld"><label>Observación</label><div class="row" style="align-items:flex-start;flex-wrap:nowrap"><textarea data-f="obs" placeholder="ESCRIBE O DICTA…">${esc(f.obs)}</textarea><button type="button" class="btn mic" data-act="dictar" aria-label="Dictar">🎤</button></div></div>
-    <div class="fld"><label class="req">Técnico que diligencia</label><select data-f="tecnico">${opts(cfg.tecnicos, f.tecnico, cfg.tecnicos.length ? 'Selecciona…' : 'Agrega técnicos en Ajustes')}</select>
-      <div style="margin-top:8px" class="row"><button class="btn" data-act="huella" id="btnHuella"></button></div></div>
+    <div class="fld"><label class="req">Hallazgo técnico de pérdidas</label><select data-f="hallazgo">${opts(HALLAZGOS, f.hallazgo, 'Selecciona…')}</select></div>
+    <div class="fld"><label>Observación</label><div class="row" style="align-items:flex-start;flex-wrap:nowrap"><textarea data-f="obs" placeholder="ESCRIBE O DICTA…">${esc(f.obs)}</textarea><button type="button" class="btn mic" data-act="dictar" aria-label="Dictar">${ic('mic')}</button></div></div>
+    </div><div class="card"><h2>Responsable</h2>
+    <div class="fld"><label class="req">Técnico que diligencia</label><select data-f="tecnico">${opts(TECNICOS, f.tecnico, 'Selecciona…')}</select></div>
     <div id="errs"></div>
     <div class="row" style="margin-top:8px"><button class="btn full" data-act="cancelar" style="flex:0 0 36%">${f.id ? 'Cancelar' : 'Limpiar'}</button><button class="btn pri" id="btnSave" data-act="guardar">${f.id ? 'Guardar cambios' : 'Guardar registro'}</button></div>
     ${f.id ? '<div style="margin-top:10px"><button class="btn bad sm" data-act="borrar-reg">Eliminar este registro</button></div>' : ''}
   </div>${FOOT}`;
 }
 function geoHTML(f) {
-  const has = f.lat != null, p = f.prec, cls = p == null ? '' : p <= 10 ? 'p-good' : p <= cfg.umbralPrec ? 'p-mid' : 'p-bad';
+  const has = f.lat != null, p = f.prec, cls = p == null ? '' : p <= 10 ? 'p-good' : p <= 30 ? 'p-mid' : 'p-bad';
   return `<div class="g"><div>Latitud<b>${has ? f.lat.toFixed(7) : '—'}</b></div><div>Longitud<b>${has ? f.lon.toFixed(7) : '—'}</b></div><div>Precisión (m)<b class="${cls}">${p == null ? '—' : p.toFixed(1)}</b></div><div>Captura<b style="font-size:13px">${f.capAt ? stamp(new Date(f.capAt)).slice(0, 16) : '—'}</b></div></div>
     <div id="geoMsg" class="note ${S.geo ? '' : 'hidden'}">${S.geo ? 'Capturando… quédate quieto, al aire libre si puedes.' : ''}</div>
     <button class="btn ter full" data-act="geo">${S.geo ? 'Detener y usar la mejor' : has ? 'Capturar de nuevo' : 'Capturar coordenada'}</button>`;
@@ -318,20 +323,10 @@ function viewRes(cd) {
 }
 
 // ajustes ---------------------------------------------------
-function viewAjustes() {
-  const lista = (key, titulo, ph) => `<div class="card"><h2>${titulo}</h2><div class="chips">${cfg[key].map((v, i) => `<span class="chip tag">${esc(v)}<button data-act="rm" data-k="${key}" data-i="${i}" aria-label="Quitar">×</button></span>`).join('') || '<small>Vacía</small>'}</div><div class="row" style="flex-wrap:nowrap"><input type="text" id="add-${key}" placeholder="${ph}" style="text-transform:${key === 'tecnicos' ? 'none' : 'uppercase'}"><button class="btn" style="flex:0 0 auto" data-act="add" data-k="${key}">Agregar</button></div></div>`;
-  return `${lista('tecnicos', 'Técnicos', 'Nombre y apellido')}${lista('marcas', 'Marcas de medidor', 'Nueva marca')}${lista('hallazgos', 'Hallazgos técnicos de pérdidas', 'Nuevo hallazgo')}
-    <div class="card"><h2>Control</h2>
-      <div class="fld"><label>Huella para guardar cada registro</label><div class="seg" data-seg="huella"><button data-v="1" class="${cfg.exigirHuella ? 'on' : ''}">EXIGIR</button><button data-v="0" class="${!cfg.exigirHuella ? 'on no' : ''}">NO EXIGIR</button></div><small>${S.huellaOK ? 'Este dispositivo tiene bloqueo biométrico disponible.' : 'Este dispositivo no reporta huella/bloqueo biométrico: se guardará sin huella.'}</small>
-      <button class="btn sm" style="margin-top:8px" data-act="huella-reset">Restablecer huella del dispositivo</button></div>
-      <div class="fld"><label>Precisión máxima aceptada para UNC (m)</label><input type="number" inputmode="numeric" id="umbral" value="${cfg.umbralPrec}"></div></div>
-    <div class="card"><h2>Respaldo</h2><label class="btn full"><input type="file" id="fj" accept=".json" hidden>Restaurar CD desde respaldo (.json)</label></div>${FOOT}`;
-}
-
 // ---------- render ----------
 function render() {
   const cd = curCD(); let body = '';
-  if (S.view === 'home') body = viewHome(); else if (S.view === 'ajustes') body = viewAjustes();
+  if (S.view === 'home') body = viewHome();
   else if (cd) body = S.tab === 'lista' ? viewLista(cd) : S.tab === 'reg' ? viewReg(cd) : S.tab === 'mapa' ? viewMapa() : viewRes(cd);
   $('#root').innerHTML = header() + `<main>${body}</main>` + nav();
   if (S.view === 'cd' && S.tab === 'reg') { updateDerived(); }
@@ -343,6 +338,7 @@ function render() {
 function marcaFinal(f) { return f.marca === OTRA ? f.marcaOtra.trim().toUpperCase() : f.marca; }
 function validar(cd, f, m) {
   const e = [], unc = f.tipo === 'UNC';
+  if (!cd.ot) e.push('N° de OT del CD');
   if (!unc) {
     if (!f.servicio.trim()) e.push('N° de servicio'); if (!f.cuenta.trim()) e.push('N° de cuenta');
     if (!f.marca) e.push('Marca del medidor'); else if (f.marca === OTRA && !f.marcaOtra.trim()) e.push('Escribe la marca');
@@ -351,10 +347,9 @@ function validar(cd, f, m) {
     if (m.i == null && f.pertenece === false) e.push('No está en la ficha ni es del circuito: no se registra');
   }
   if (!f.actividad) e.push('Actividad económica');
-  if (unc) { if (f.lat == null) e.push('Capturar coordenada (obligatoria para UNC)'); else if (f.prec > cfg.umbralPrec) e.push(`Precisión ${f.prec.toFixed(0)} m: repite la captura (máx. ${cfg.umbralPrec} m)`); }
+  if (unc) { if (f.lat == null) e.push('Capturar coordenada (obligatoria para UNC)'); }
   if (!f.hallazgo) e.push('Hallazgo técnico'); else if (f.hallazgo === HOTRO && !f.obs.trim()) e.push('Describe el hallazgo en la observación');
   if (!f.tecnico) e.push('Técnico');
-  if (cfg.exigirHuella && S.huellaOK && !f.huella) e.push('Confirmar con huella');
   // duplicados
   if (!f.id && !unc) {
     const dup = cd.registros.find(r => r.tipo === 'CLIENTE' && ((idn(f.servicio) && idn(r.servicio) === idn(f.servicio)) || (idn(f.cuenta) && idn(r.cuenta) === idn(f.cuenta)) || (m.i != null && matchFicha(cd, r).i === m.i)));
@@ -370,7 +365,7 @@ function updateDerived() {
   if (m.i != null && S._autoI !== m.i && !m.conflict) {
     S._autoI = m.i; const fi = cd.ficha[m.i];
     setIfEmpty('servicio', fi.servicio); setIfEmpty('cuenta', fi.cuenta); setIfEmpty('medidor', fi.medidor);
-    if (!f.marca) { const mk = fi.marca; if (!fi.medidor && !mk) f.marca = SINMED; else if (mk && cfg.marcas.includes(mk)) f.marca = mk; else if (mk) { f.marca = OTRA; f.marcaOtra = mk; } const sel = $('[data-f="marca"]'); if (sel) sel.value = f.marca; const ot = $('[data-f="marcaOtra"]'); if (ot) ot.value = f.marcaOtra; }
+    if (!f.marca) { const mk = fi.marca; if (!fi.medidor && !mk) f.marca = SINMED; else if (mk && marcasList().includes(mk)) f.marca = mk; else if (mk) { f.marca = OTRA; f.marcaOtra = mk; } const sel = $('[data-f="marca"]'); if (sel) sel.value = f.marca; const ot = $('[data-f="marcaOtra"]'); if (ot) ot.value = f.marcaOtra; }
     if (!f.actividad) { const a = ACTIVIDADES.find(x => x === fi.clase); if (a) { f.actividad = a; const sel = $('[data-f="actividad"]'); if (sel) sel.value = a; } }
   }
   if (m.i == null) S._autoI = null;
@@ -383,8 +378,7 @@ function updateDerived() {
   const c = clasif(cd, f, m); $('#clasif').innerHTML = c == null ? '<span class="badge pend">Responde “¿es de este circuito?”</span>' : badge(CL[c].c, CL[c].t) + (c === 0 ? '<div class="note err">No se registra: no está en la ficha y no es del circuito.</div>' : '') + (unc ? '<div style="font-size:12px;color:var(--mut);margin-top:4px">Los UNC no están en ficha y se vinculan a este circuito (tabla 3, tipo UNC).</div>' : '');
   // lectura vs última
   const lh = $('#lectHint'); if (lh) { const fi = m.i != null ? cd.ficha[m.i] : null, v = num(f.lectura); lh.innerHTML = fi && fi.ultimaLectura != null ? `Última lectura en ficha: ${fmt(fi.ultimaLectura)} (periodo ${esc(fi.periodoUlt)})` + (v != null && v < fi.ultimaLectura ? ' <b style="color:var(--bad)">· la lectura es menor a la última: revisa</b>' : '') : ''; }
-  // huella y errores
-  const hb = $('#btnHuella'); if (hb) { const need = cfg.exigirHuella && S.huellaOK; hb.textContent = f.huella ? '✓ Huella confirmada ' + stamp(new Date(f.huella.at)).slice(11, 16) : S.huellaOK ? '☝ Confirmar con huella' : 'Sin huella en este dispositivo'; hb.disabled = !S.huellaOK; hb.classList.toggle('ter', !f.huella && need); }
+  // errores
   const errs = validar(cd, f, m); $('#errs').innerHTML = errs.length ? `<div class="note warn"><b>Falta:</b> ${errs.map(esc).join(' · ')}${S.dup && errs.includes('Este cliente ya está registrado') ? ` <button class="btn sm" data-act="open-reg" data-id="${esc(S.dup)}">Abrir el existente</button>` : ''}</div>` : '';
   $('#btnSave').disabled = errs.length > 0;
 }
@@ -399,8 +393,8 @@ function matchHTML(cd, f, m) {
 async function guardar() {
   const cd = curCD(), f = S.form, unc = f.tipo === 'UNC', m = unc ? { i: null } : matchFicha(cd, f), errs = validar(cd, f, m);
   if (errs.length) return toast('Falta: ' + errs[0]);
-  const marca = unc ? '' : marcaFinal(f); if (marca && f.marca === OTRA && !cfg.marcas.includes(marca)) { cfg.marcas.push(marca); await saveCfg(); }
-  const rec = { id: f.id || uid(), tipo: f.tipo, servicio: unc ? '' : f.servicio.trim(), cuenta: unc ? '' : f.cuenta.trim(), medidor: unc || f.marca === SINMED ? '' : f.medidor.trim(), marca: unc ? '' : marca, lectura: unc || f.marca === SINMED ? null : num(f.lectura), actividad: f.actividad, pertenece: unc ? true : f.pertenece, hallazgo: f.hallazgo, obs: f.obs.trim().toUpperCase(), direccion: f.direccion.trim().toUpperCase(), lat: f.lat, lon: f.lon, prec: f.prec, capAt: f.capAt, tecnico: f.tecnico, huella: f.huella, ot: cd.ot || '', fecha: f.fecha || stamp(), creado: f.creado || new Date().toISOString(), editado: new Date().toISOString() };
+  const marca = unc ? '' : marcaFinal(f); if (marca && f.marca === OTRA && !marcasList().includes(marca)) { (cfg.marcasExtra = cfg.marcasExtra || []).push(marca); await saveCfg(); }
+  const rec = { id: f.id || uid(), tipo: f.tipo, servicio: unc ? '' : f.servicio.trim(), cuenta: unc ? '' : f.cuenta.trim(), medidor: unc || f.marca === SINMED ? '' : f.medidor.trim(), marca: unc ? '' : marca, lectura: unc || f.marca === SINMED ? null : num(f.lectura), actividad: f.actividad, pertenece: unc ? true : f.pertenece, hallazgo: f.hallazgo, obs: f.obs.trim().toUpperCase(), direccion: f.direccion.trim().toUpperCase(), lat: f.lat, lon: f.lon, prec: f.prec, capAt: f.capAt, tecnico: f.tecnico, fecha: f.fecha || stamp(), creado: f.creado || new Date().toISOString(), editado: new Date().toISOString() };
   const i = cd.registros.findIndex(r => r.id === rec.id); if (i >= 0) cd.registros[i] = rec; else cd.registros.push(rec);
   cfg.ultimoTecnico = f.tecnico; await saveCfg(); await saveCD(cd);
   toast('✓ Registro guardado'); const back = S.from; S.form = newForm(unc ? 'UNC' : 'CLIENTE'); S._autoI = null; S.from = 'reg'; S.tab = back === 'lista' ? 'lista' : 'reg'; render();
@@ -430,23 +424,6 @@ function geoStart() {
 let posW = null;
 function mapGPS() { if (!navigator.geolocation) return toast('Sin GPS'); if (posW != null) navigator.geolocation.clearWatch(posW); toast('Buscando tu ubicación…'); posW = navigator.geolocation.watchPosition(p => { S.pos = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy }; drawMap(); }, () => toast('No se pudo obtener la ubicación'), { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 }); }
 
-// ---------- huella (WebAuthn) ----------
-const rnd = n => crypto.getRandomValues(new Uint8Array(n));
-const b64 = b => btoa(String.fromCharCode(...new Uint8Array(b))), unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
-async function huellaOK() { try { return !!(window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()); } catch { return false; } }
-async function firmar() {
-  const f = S.form; if (!f.tecnico) return toast('Primero selecciona el técnico');
-  try {
-    if (!cfg.credId) {
-      const c = await navigator.credentials.create({ publicKey: { challenge: rnd(32), rp: { name: 'GS VCT', id: location.hostname }, user: { id: rnd(16), name: 'gs-vct', displayName: 'GS VCT' }, pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }], authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' }, timeout: 60000, attestation: 'none' } });
-      cfg.credId = b64(c.rawId); await saveCfg();
-    } else {
-      await navigator.credentials.get({ publicKey: { challenge: rnd(32), rpId: location.hostname, allowCredentials: [{ type: 'public-key', id: unb64(cfg.credId) }], userVerification: 'required', timeout: 60000 } });
-    }
-    f.huella = { ok: true, at: new Date().toISOString(), tecnico: f.tecnico }; toast('✓ Huella confirmada'); updateDerived();
-  } catch (e) { toast(e && e.name === 'NotAllowedError' ? 'Huella cancelada o no reconocida' : 'No se pudo usar la huella: ' + (e && e.message || e)); }
-}
-
 // ---------- dictado por voz ----------
 let REC = null;
 function dictar() {
@@ -463,12 +440,11 @@ function dictar() {
 async function cargarExcel(file) {
   try {
     const wb = await XLSXLite.readXlsx(await file.arrayBuffer()), cds = buildCDs(wb);
-    const box = document.createElement('div'); box.className = 'modal'; box.innerHTML = `<div class="box"><h3>Crear CD desde el Excel</h3>${cds.map(c => `<div class="card"><b>${esc(c.id)}</b> · ${esc(c.meta.circuito)}<br>${c.ficha.length} clientes · ${c.balances.length} periodos de balance · ${c.ficha.filter(f => f.lat != null).length} con coordenada${S.cds[c.id] ? `<div class="note warn">Ya existe: se actualiza la ficha y se conservan sus ${S.cds[c.id].registros.length} registros.</div>` : ''}</div>`).join('')}<div class="row"><button class="btn" id="mNo">Cancelar</button><button class="btn pri" id="mSi">Aceptar</button></div></div>`;
+    const box = document.createElement('div'); box.className = 'modal'; box.innerHTML = `<div class="box"><h3>Crear CD desde el Excel</h3>${cds.map(c => `<div class="card"><b>${esc(c.id)}</b> · ${esc(c.meta.circuito)}<br>${c.ficha.length} clientes · ${c.balances.length} periodos de balance · ${c.ficha.filter(f => f.lat != null).length} con coordenada${S.cds[c.id] ? '' : `<div class="fld" style="margin:8px 0 0"><label>N° de OT de este CD</label><input type="text" data-newot="${esc(c.id)}" autocomplete="off"></div>`}${S.cds[c.id] ? `<div class="note warn">Ya existe: se actualiza la ficha y se conservan sus ${S.cds[c.id].registros.length} registros.</div>` : ''}</div>`).join('')}<div class="row"><button class="btn" id="mNo">Cancelar</button><button class="btn pri" id="mSi">Aceptar</button></div></div>`;
     document.body.appendChild(box); $('#mNo').onclick = () => box.remove();
     $('#mSi').onclick = async () => {
       for (const c of cds) {
-        const old = S.cds[c.id]; if (old) { old.ficha = c.ficha; old.meta = c.meta; old.balances = c.balances; S.cds[c.id] = old; } else S.cds[c.id] = c;
-        let nuevas = 0; c.ficha.forEach(f => { if (f.marca && !cfg.marcas.includes(f.marca)) { cfg.marcas.push(f.marca); nuevas++; } });
+        const old = S.cds[c.id]; if (old) { old.ficha = c.ficha; old.meta = c.meta; old.balances = c.balances; S.cds[c.id] = old; } else { const o = document.querySelector(`[data-newot="${c.id}"]`); c.ot = o ? o.value.trim() : ''; S.cds[c.id] = c; }
         await saveCD(S.cds[c.id]);
       }
       await saveCfg(); box.remove(); toast(`✓ ${cds.length} CD listo(s)`); if (cds.length === 1) { S.cur = cds[0].id; S.view = 'cd'; S.tab = 'lista'; S.form = newForm(); } render();
@@ -491,10 +467,8 @@ document.addEventListener('click', async ev => {
     const k = sg.dataset.seg, v = t.dataset.v;
     if (k === 'tipo') { const cur = S.form; if (cur.tipo === v) return; const nf = newForm(v); nf.tecnico = cur.tecnico; nf.actividad = cur.actividad; S.form = nf; S._autoI = null; return render(); }
     if (k === 'pertenece') { S.form.pertenece = v === '1'; sg.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b === t); b.classList.toggle('no', b === t && v === '0'); }); return updateDerived(); }
-    if (k === 'huella') { cfg.exigirHuella = v === '1'; await saveCfg(); return render(); }
   }
   switch (t.dataset.act) {
-    case 'ajustes': S.view = 'ajustes'; return render();
     case 'home': if (S.geo) geoStop(false); S.view = 'home'; S.cur = null; return render();
     case 'open-cd': S.cur = t.dataset.id; S.view = 'cd'; S.tab = 'lista'; S.q = ''; S.flt = 'todos'; S.form = newForm(); S.from = 'reg'; return render();
     case 'nuevo': S.form = newForm(); S.from = 'reg'; S._autoI = null; S.tab = 'reg'; return render();
@@ -504,7 +478,6 @@ document.addEventListener('click', async ev => {
     case 'guardar': return guardar();
     case 'borrar-reg': if (confirm('¿Eliminar este registro?')) { cd.registros = cd.registros.filter(r => r.id !== S.form.id); await saveCD(cd); S.form = newForm(); S.tab = 'lista'; toast('Registro eliminado'); render(); } return;
     case 'geo': return geoStart();
-    case 'huella': return firmar();
     case 'dictar': return dictar();
     case 'mz': MAP.z = Math.min(40, Math.max(0.3, MAP.z * +t.dataset.v)); return drawMap();
     case 'mc': MAP.z = 1; MAP.dx = 0; MAP.dy = 0; return drawMap();
@@ -513,19 +486,15 @@ document.addEventListener('click', async ev => {
     case 'xlsx-share': return exportarExcel(cd, true);
     case 'json': return exportarJSON(cd);
     case 'del-cd': if (!cd.exportadoEn && !confirm('Este CD no se ha exportado. ¿Eliminarlo de todos modos?')) return; if (confirm(`¿Eliminar el CD ${cd.id} y sus ${cd.registros.length} registros de este dispositivo?`)) { await dbDelCD(cd.id); delete S.cds[cd.id]; S.cur = null; S.view = 'home'; render(); } return;
-    case 'add': { const k = t.dataset.k, inp = $('#add-' + k), v = inp.value.trim(); if (!v) return; const val = k === 'tecnicos' ? v : v.toUpperCase(); if (!cfg[k].includes(val)) cfg[k].push(val); await saveCfg(); return render(); }
-    case 'rm': { cfg[t.dataset.k].splice(+t.dataset.i, 1); await saveCfg(); return render(); }
-    case 'huella-reset': cfg.credId = null; await saveCfg(); return toast('Se registrará la huella de nuevo en el próximo registro');
   }
 });
 document.addEventListener('input', ev => {
   const el = ev.target, cd = curCD();
   if (el.id === 'q') { S.q = el.value; $('#lst').innerHTML = listHTML(cd); return; }
-  if (el.dataset.cdf) { cd[el.dataset.cdf] = el.value.trim(); saveCD(cd); return; }
-  if (el.id === 'umbral') { cfg.umbralPrec = Math.max(3, +el.value || 30); saveCfg(); return; }
+  if (el.dataset.cdf) { cd[el.dataset.cdf] = el.value.trim(); saveCD(cd); if (S.tab === 'reg') updateDerived(); return; }
   const k = el.dataset.f; if (!k || !S.form) return;
   if (['obs', 'direccion', 'marcaOtra'].includes(k)) { const p = el.selectionStart; el.value = el.value.toUpperCase(); try { el.setSelectionRange(p, p); } catch { } }
-  S.form[k] = el.value; if (k === 'tecnico') S.form.huella = null; updateDerived();
+  S.form[k] = el.value; updateDerived();
 });
 document.addEventListener('change', ev => {
   const el = ev.target; if (el.id === 'fx' && el.files[0]) { cargarExcel(el.files[0]); el.value = ''; } if (el.id === 'fj' && el.files[0]) { cargarJSON(el.files[0]); el.value = ''; }
@@ -543,9 +512,9 @@ window.addEventListener('error', e => toast('Error: ' + e.message, 5000));
 (async function init() {
   try {
     await openDB(); const saved = await dbGetKV('cfg'); if (saved) { cfg = Object.assign(defaultCfg(), saved); }
-    (await dbAllCD()).forEach(c => S.cds[c.id] = c);
+    (await dbAllCD()).forEach(c => S.cds[c.id] = c); 
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
   } catch (e) { toast('No pude abrir el almacenamiento local: ' + e.message, 6000); }
-  S.huellaOK = await huellaOK(); S.form = newForm(); render();
+  S.form = newForm(); render();
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => { });
 })();
