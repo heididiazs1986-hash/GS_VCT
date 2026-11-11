@@ -118,6 +118,18 @@ nav.bottom button .ic{width:24px;height:24px}
 nav.bottom button:active{transform:scale(.96)}
 nav.bottom button.on{color:#fff;background:linear-gradient(135deg,#FF8A2B,#FF5F00);box-shadow:0 4px 12px rgba(255,102,0,.32)}
 @media(prefers-color-scheme:dark){nav.bottom{background:rgba(23,29,36,.92);border-top-color:rgba(255,255,255,.1);box-shadow:0 -8px 24px rgba(0,0,0,.4)}}
+.ms{border:1px solid var(--line);border-radius:12px;background:var(--card)}
+.ms summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:15px;font-weight:600;color:var(--tx)}
+.ms summary::-webkit-details-marker{display:none}
+.ms summary span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms summary::after{content:"";width:8px;height:8px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(45deg);margin:-4px 2px 0 0;flex:0 0 auto}
+.ms[open] summary::after{transform:rotate(-135deg);margin-top:4px}
+.msl{max-height:260px;overflow:auto;border-top:1px solid var(--line);padding:4px}
+.mso{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;border:0;background:none;color:var(--tx);font:inherit;font-size:13.5px;padding:9px 10px;border-radius:8px;cursor:pointer}
+.mso i{flex:0 0 18px;height:18px;border:2px solid var(--line);border-radius:5px;margin-top:1px;display:grid;place-items:center}
+.mso.on{background:var(--pri-soft);font-weight:600}
+.mso.on i{background:linear-gradient(135deg,#FF8A2B,#FF5F00);border-color:var(--pri)}
+.mso.on i::after{content:"";width:5px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px)}
 </style>
 </head>
 <body>

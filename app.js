@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.7.0';
+const VER = '1.7.1';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -297,13 +297,20 @@ function geoHTML(f) {
 // resumen ---------------------------------------------------
 function setupOk(cd) { return !!(otOk(cd.ot) && cd.placa && (cd.placa !== PLACA_NO || (cd.placaReal || '').trim()) && cd.capacidad && cd.hallazgosCD && cd.hallazgosCD.length); }
 function hzHTML(cd) {
-  const sel = cd.hallazgosCD || [], libres = HZ_CD.filter(h => !sel.includes(h));
-  return `<select data-hzadd>${opts(libres, '', sel.length ? 'Agregar otro hallazgo…' : 'Selecciona un hallazgo…')}</select>
-    <div class="chips" style="margin-top:8px">${sel.map(h => `<button class="chip on" data-act="hz" data-v="${esc(h)}">${esc(h)} ✕</button>`).join('')}</div>`;
+  const sel = cd.hallazgosCD || [], rest = alfa(HZ_CD.filter(h => h !== 'SIN HALLAZGOS' && h !== 'SIN HALLAZGOS'));
+  const lista = ['SIN HALLAZGOS', ...rest];
+  const txt = !sel.length ? 'Selecciona…' : sel.length === 1 ? sel[0] : `${sel.length} hallazgos seleccionados`;
+  return `<details class="ms"${S.hzOpen ? ' open' : ''}><summary><span>${esc(txt)}</span></summary>
+    <div class="msl">${lista.map(h => `<button type="button" class="mso${sel.includes(h) ? ' on' : ''}" data-act="hz" data-v="${esc(h)}"><i></i><span>${esc(h)}</span></button>`).join('')}</div></details>`;
 }
 function hzAdd(cd, v) {
-  const a = cd.hallazgosCD = cd.hallazgosCD || [], i = a.indexOf(v);
-  if (i >= 0) a.splice(i, 1); else { if (v === 'SIN HALLAZGOS') a.length = 0; else { const k = a.indexOf('SIN HALLAZGOS'); if (k >= 0) a.splice(k, 1); } a.push(v); }
+  let a = cd.hallazgosCD = cd.hallazgosCD || [];
+  const i = a.indexOf(v);
+  if (i >= 0) a.splice(i, 1);
+  else if (v === 'SIN HALLAZGOS') a.length = 0, a.push(v);
+  else { const k = a.indexOf('SIN HALLAZGOS'); if (k >= 0) a.splice(k, 1); a.push(v); }
+  if (!a.length) a.push('SIN HALLAZGOS');
+  S.hzOpen = true;
   return saveCD(cd).then(() => { const b = $('#hzbox'); if (b) b.innerHTML = hzHTML(cd); const bs = $('#btnSetup'); if (bs) bs.disabled = !setupOk(cd); });
 }
 function cdFields(cd) {
