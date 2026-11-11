@@ -190,7 +190,7 @@ function header() {
 }
 function nav() {
   if (S.view !== 'cd' || !curCD() || !curCD().setup) return '';
-  const isU = S.form && S.form.tipo === 'UNC', t = [['lista', ic('list'), 'Ficha'], ['reg', ic('plus'), 'Otros clientes'], ['unc', ic('home'), 'UNC'], ['mapa', ic('pin'), 'Mapa'], ['res', ic('sum'), 'Resumen']];
+  const isU = S.form && S.form.tipo === 'UNC', t = [['lista', ic('list'), 'Ficha'], ['reg', ic('plus'), 'Otros clientes'], ['unc', ic('home'), 'UNC'], ['res', ic('sum'), 'Resumen']];
   const fromL = S.tab === 'reg' && !isU && S.from === 'lista', on = k => k === 'reg' ? S.tab === 'reg' && !isU && !fromL : k === 'unc' ? S.tab === 'reg' && isU : k === 'lista' ? S.tab === 'lista' || fromL : S.tab === k;
   return `<nav class="bottom">${t.map(([k, i, l]) => `<button data-tab="${k}" class="${on(k) ? 'on' : ''}">${i}${l}</button>`).join('')}</nav>`;
 }
@@ -293,52 +293,6 @@ function geoHTML(f) {
     <button class="btn ter full" data-act="geo">${ic('pin')}${cap ? 'Detener y usar la mejor' : has ? 'Capturar de nuevo' : 'Capturar ubicación'}</button>`;
 }
 
-// mapa ------------------------------------------------------
-const MAP = { z: 1, dx: 0, dy: 0, ptrs: new Map(), pts: [] };
-function viewMapa() {
-  return `<canvas id="map"></canvas><div class="mapbtns"><button class="btn" data-act="mz" data-v="1.4">＋</button><button class="btn" data-act="mz" data-v="0.7">－</button><button class="btn" data-act="mc">Centrar</button><button class="btn ter" data-act="mgps">Mi ubicación</button></div>
-    <div class="legend"><span><i style="background:#94A3B8"></i>Pendiente</span><span><i style="background:#35A1D1"></i>En ficha, de este CD</span><span><i style="background:#FFB27A"></i>En ficha, de otro CD</span><span><i style="background:#1E293B"></i>No en ficha</span><span><i style="background:#FF6600"></i>UNC</span><span><i style="background:#000;border-radius:2px"></i>Transformador</span></div>
-    <div id="mapInfo"></div>${FOOT}`;
-}
-function mapSetup() {
-  const cd = curCD(), cv = $('#map'); if (!cv) return;
-  const s = stats(cd); const pts = [];
-  cd.ficha.forEach((f, i) => { if (f.lat != null) { const r = s.reg.get(i); const c = r ? clasif(cd, r) : null; pts.push({ lat: f.lat, lon: f.lon, col: !r ? '#94A3B8' : c === 1 ? '#35A1D1' : '#FFB27A', i, label: `Serv. ${f.servicio} · ${f.direccion}` }); } });
-  cd.registros.forEach(r => { if (r.lat != null && (r.tipo === 'UNC' || matchFicha(cd, r).i == null)) pts.push({ lat: r.lat, lon: r.lon, col: r.tipo === 'UNC' ? '#FF6600' : '#1E293B', rid: r.id, label: r.tipo === 'UNC' ? 'UNC ' + (r.direccion || '') : `Serv. ${r.servicio} (fuera de ficha)` }); });
-  const t = cd.meta.lat != null ? { lat: cd.meta.lat, lon: cd.meta.lon } : pts.length ? { lat: pts.reduce((a, p) => a + p.lat, 0) / pts.length, lon: pts.reduce((a, p) => a + p.lon, 0) / pts.length } : { lat: 4.6, lon: -74.1 };
-  const kx = 111320 * Math.cos(t.lat * Math.PI / 180), ky = 110540;
-  pts.forEach(p => { p.x = (p.lon - t.lon) * kx; p.y = (p.lat - t.lat) * ky; p.d = Math.hypot(p.x, p.y); });
-  const ds = pts.map(p => p.d).sort((a, b) => a - b); const p90 = ds.length ? ds[Math.floor(ds.length * 0.9)] : 100;
-  MAP.pts = pts; MAP.t = t; MAP.kx = kx; MAP.ky = ky; MAP.R = Math.min(1500, Math.max(120, p90 * 1.15)); MAP.far = pts.filter(p => p.d > MAP.R).length;
-  MAP.z = 1; MAP.dx = 0; MAP.dy = 0; sizeMap();
-}
-function sizeMap() { const cv = $('#map'); if (!cv) return; const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1; cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); drawMap(); }
-function proj(x, y) { const cv = $('#map'), d = window.devicePixelRatio || 1, w = cv.width / d, h = cv.height / d, sc = Math.min(w, h) / 2 * 0.88 / MAP.R * MAP.z; return [w / 2 + MAP.dx + x * sc, h / 2 + MAP.dy - y * sc, sc]; }
-function drawMap() {
-  const cv = $('#map'); if (!cv) return; const d = window.devicePixelRatio || 1, g = cv.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0);
-  const w = cv.width / d, h = cv.height / d, dark = matchMedia('(prefers-color-scheme: dark)').matches; g.clearRect(0, 0, w, h);
-  const [ox, oy, sc] = proj(0, 0); g.strokeStyle = dark ? '#2c353e' : '#e3e6ea'; g.fillStyle = dark ? '#9aa6b2' : '#5b6672'; g.font = '11px sans-serif'; g.lineWidth = 1;
-  const step = [10, 25, 50, 100, 200, 500, 1000].find(s => s * sc > 40) || 1000;
-  for (let k = 1; k <= 12; k++) { const r = step * k * sc; if (r > Math.max(w, h)) break; g.beginPath(); g.arc(ox, oy, r, 0, 7); g.stroke(); if (k <= 4) g.fillText(step * k + ' m', ox + r + 2, oy - 2); }
-  MAP.pts.forEach(p => { const [x, y] = proj(p.x, p.y); if (x < -10 || y < -10 || x > w + 10 || y > h + 10) return; g.beginPath(); g.arc(x, y, p === MAP.sel ? 9 : 6, 0, 7); g.fillStyle = p.col; g.fill(); g.lineWidth = p === MAP.sel ? 3 : 1.5; g.strokeStyle = p === MAP.sel ? '#79D1FF' : '#fff'; g.stroke(); });
-  g.fillStyle = '#000'; g.fillRect(ox - 7, oy - 7, 14, 14); g.strokeStyle = '#FF6600'; g.lineWidth = 3; g.strokeRect(ox - 7, oy - 7, 14, 14);
-  if (S.pos) { const x0 = (S.pos.lon - MAP.t.lon) * MAP.kx, y0 = (S.pos.lat - MAP.t.lat) * MAP.ky, [x, y] = proj(x0, y0); g.beginPath(); g.arc(x, y, Math.max(8, S.pos.acc * sc), 0, 7); g.fillStyle = 'rgba(11,120,184,.18)'; g.fill(); g.beginPath(); g.arc(x, y, 7, 0, 7); g.fillStyle = '#0b78b8'; g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 2; g.stroke(); }
-  if (MAP.far) { g.fillStyle = dark ? '#9aa6b2' : '#5b6672'; g.fillText(MAP.far + ' punto(s) lejos del transformador, fuera de vista (aleja el mapa)', 8, h - 8); }
-}
-function mapPointer(ev, kind) {
-  const cv = $('#map'); if (!cv) return; const P = MAP.ptrs;
-  if (kind === 'down') { cv.setPointerCapture(ev.pointerId); P.set(ev.pointerId, { x: ev.offsetX, y: ev.offsetY, sx: ev.offsetX, sy: ev.offsetY }); MAP.moved = 0; MAP.pd = null; }
-  else if (kind === 'move' && P.has(ev.pointerId)) {
-    const p = P.get(ev.pointerId); const dx = ev.offsetX - p.x, dy = ev.offsetY - p.y;
-    if (P.size === 2) { const [a, b] = [...P.values()]; const d0 = Math.hypot(a.x - b.x, a.y - b.y); p.x = ev.offsetX; p.y = ev.offsetY; const [c, e] = [...P.values()]; const d1 = Math.hypot(c.x - e.x, c.y - e.y); if (d0 > 0) MAP.z = Math.min(40, Math.max(0.3, MAP.z * d1 / d0)); MAP.moved = 99; }
-    else { MAP.dx += dx; MAP.dy += dy; MAP.moved += Math.abs(dx) + Math.abs(dy); p.x = ev.offsetX; p.y = ev.offsetY; }
-    drawMap();
-  } else if (kind === 'up' && P.has(ev.pointerId)) {
-    const p = P.get(ev.pointerId); P.delete(ev.pointerId);
-    if (MAP.moved < 8 && P.size === 0) { let best = null, bd = 26; MAP.pts.forEach(q => { const [x, y] = proj(q.x, q.y); const dd = Math.hypot(x - p.sx, y - p.sy); if (dd < bd) { bd = dd; best = q; } }); MAP.sel = best; drawMap(); const mi = $('#mapInfo'); if (mi) mi.innerHTML = best ? `<div class="card" style="margin-top:8px"><b>${esc(best.label)}</b><div style="margin-top:8px"><button class="btn pri sm" data-act="${best.rid ? 'open-reg' : 'open-ficha'}" ${best.rid ? `data-id="${esc(best.rid)}"` : `data-i="${best.i}"`}>Abrir / registrar</button></div></div>` : ''; }
-  } else if (kind === 'cancel') P.delete(ev.pointerId);
-}
-
 // resumen ---------------------------------------------------
 function setupOk(cd) { return !!(otOk(cd.ot) && cd.placa && (cd.placa !== PLACA_NO || (cd.placaReal || '').trim()) && cd.capacidad && cd.hallazgosCD && cd.hallazgosCD.length); }
 function hzHTML(cd) {
@@ -403,11 +357,10 @@ function render() {
   const cd = curCD(); let body = '';
   if (S.view === 'home') body = viewHome();
   else if (cd && !cd.setup) body = viewSetup(cd);
-  else if (cd) body = S.tab === 'lista' ? viewLista(cd) : S.tab === 'reg' ? viewReg(cd) : S.tab === 'mapa' ? viewMapa() : viewRes(cd);
+  else if (cd) body = S.tab === 'lista' ? viewLista(cd) : S.tab === 'reg' ? viewReg(cd) : viewRes(cd);
   const key = S.view + ':' + S.tab + (S.tab === 'reg' && S.form ? S.form.tipo : '') + ':' + (cfg.usuario ? 1 : 0) + ':' + (S.cur || ''), cambio = key !== S._key; S._key = key;
   $('#root').innerHTML = header() + `<main${cambio ? ' class="enter"' : ''}>${body}</main>` + nav();
   if (S.view === 'cd' && S.tab === 'reg') { updateDerived(); }
-  if (S.view === 'cd' && S.tab === 'mapa') mapSetup();
   window.scrollTo(0, 0);
 }
 
@@ -500,8 +453,6 @@ function geoStart() {
   g.t = setTimeout(() => geoStop(true), 15000);
   const el = $('#geo'); if (el) el.innerHTML = geoHTML(S.form);
 }
-let posW = null;
-function mapGPS() { if (!navigator.geolocation) return toast('Sin GPS'); if (posW != null) navigator.geolocation.clearWatch(posW); toast('Buscando tu ubicación…'); posW = navigator.geolocation.watchPosition(p => { S.pos = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy }; drawMap(); }, () => toast('No se pudo obtener la ubicación'), { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 }); }
 
 // ---------- dictado por voz ----------
 let REC = null;
@@ -566,9 +517,6 @@ document.addEventListener('click', async ev => {
     case 'borrar-reg': if (confirm('¿Eliminar este registro?')) { cd.registros = cd.registros.filter(r => r.id !== S.form.id); await saveCD(cd); S.form = newForm(); S.tab = 'lista'; toast('Registro eliminado'); render(); } return;
     case 'geo': return geoStart();
     case 'dictar': return dictar();
-    case 'mz': MAP.z = Math.min(40, Math.max(0.3, MAP.z * +t.dataset.v)); return drawMap();
-    case 'mc': MAP.z = 1; MAP.dx = 0; MAP.dy = 0; return drawMap();
-    case 'mgps': return mapGPS();
     case 'hz': return hzAdd(cd, t.dataset.v);
     case 'setup-ok': if (!setupOk(cd)) return toast('Completa placa, capacidad y hallazgos'); cd.setup = true; await saveCD(cd); S.tab = 'lista'; return render();
     case 'xlsx': return exportarExcel(cd, false);
@@ -593,12 +541,6 @@ document.addEventListener('change', async ev => {
   if (el.dataset.hzadd !== undefined && el.value) return hzAdd(curCD(), el.value);
   if (el.dataset.cdf) { const cd = curCD(); cd[el.dataset.cdf] = el.value; saveCD(cd); if (el.dataset.cdf === 'placa') { const pr = $('[data-show="placaReal"]'); if (pr) pr.classList.toggle('hidden', el.value !== PLACA_NO); } const bs = $('#btnSetup'); if (bs) bs.disabled = !setupOk(cd); }
 });
-document.addEventListener('pointerdown', e => { if (e.target.id === 'map') mapPointer(e, 'down'); });
-document.addEventListener('pointermove', e => { if (e.target.id === 'map') mapPointer(e, 'move'); });
-document.addEventListener('pointerup', e => { if (e.target.id === 'map') mapPointer(e, 'up'); });
-document.addEventListener('pointercancel', e => { if (e.target.id === 'map') mapPointer(e, 'cancel'); });
-document.addEventListener('wheel', e => { if (e.target.id === 'map') { e.preventDefault(); MAP.z = Math.min(40, Math.max(0.3, MAP.z * (e.deltaY < 0 ? 1.2 : 0.83))); drawMap(); } }, { passive: false });
-window.addEventListener('resize', () => { if (S.view === 'cd' && S.tab === 'mapa') sizeMap(); });
 window.addEventListener('error', e => toast('Error: ' + e.message, 5000));
 
 // ---------- arranque ----------
