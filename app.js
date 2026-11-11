@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.2.2';
+const VER = '1.3.0';
 const OT_LEN = 10;
 const otOk = v => new RegExp('^\\d{' + OT_LEN + '}$').test(v || '');
 const otAtt = `inputmode="numeric" maxlength="${OT_LEN}" pattern="[0-9]*"`;
@@ -36,6 +36,8 @@ const dbPutKV = (k, v) => tx('kv', 'readwrite', s => s.put(v, k));
 
 // ---------- configuración y catálogos ----------
 const ACTIVIDADES = ['RESIDENCIAL', 'COMERCIAL', 'INDUSTRIAL', 'OFICIAL', 'OTRO'];
+const KVA = ['5', '10', '15', '25', '30', '37.5', '45', '50', '75', '100', '112.5', '150', '225', '300'];
+const HZ_CD = ['SIN HALLAZGOS', 'FUGA VISIBLE DE ACEITE DEL TRANSFORMADOR', 'CUBA DEL TRANSFORMADOR CON CORROSIÓN VISIBLE', 'AISLADOR O BOQUILLA DEL TRANSFORMADOR FISURADO, ROTO O DESPRENDIDO', 'BORNE O CONEXIÓN CON SOBRECALENTAMIENTO', 'SIN SISTEMA DE PUESTA A TIERRA', 'PUESTA A TIERRA MAL INSTALADA O CON CONEXIÓN DEFICIENTE', 'CONDUCTOR DE PUESTA A TIERRA INTERRUMPIDO O SUELTO', 'DPS AUSENTE', 'DPS EN MAL ESTADO', 'CORTACIRCUITO SIN PORTAFUSIBLE', 'PORTAFUSIBLE EN MAL ESTADO', 'CORTACIRCUITO O PROTECCIÓN CON DAÑO VISIBLE', 'POSTE DESAPLOMADO (INCLINACIÓN VISIBLE)'];
 const PLACAS = ['LA PLACA CORRESPONDE CON EL ROTULO DE LA OT', 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT', 'NO TIENE PLACA VISIBLE'];
 const OTRA = 'OTRA (ESCRIBIR)', SINMED = 'SIN MEDIDOR', HOTRO = 'OTRO (DESCRIBIR EN OBSERVACIÓN)';
 const HALLAZGOS = ['SIN HALLAZGO', 'MEDIDOR SIN SELLOS / SELLOS VIOLADOS', 'MEDIDOR MANIPULADO O ALTERADO', 'MEDIDOR DETENIDO O SIN REGISTRO', 'MEDIDOR CON LECTURA INCONSISTENTE', 'MEDIDOR NO CORRESPONDE A LA CUENTA (CRUCE)', 'CONEXIÓN DIRECTA (SIN MEDIDOR)', 'PUENTE O BYPASS EN LA MEDIDA', 'DERIVACIÓN CLANDESTINA EN LA RED', 'ACOMETIDA EN MAL ESTADO (PÉRDIDA TÉCNICA)', 'EMPALMES O CONEXIONES FLOJAS / SULFATADAS', 'CARGA NO REGISTRADA / USO DIFERENTE AL CONTRATADO', 'CLIENTE CONECTADO A OTRO TRANSFORMADOR', 'CLIENTE NO UBICADO / DIRECCIÓN NO CORRESPONDE', 'SERVICIO SUSPENDIDO CON ENERGÍA', 'NO PERMITE INSPECCIÓN / SIN ACCESO A LA MEDIDA', 'PREDIO DESOCUPADO O DEMOLIDO', 'CARGA COMUNITARIA O ALUMBRADO SIN MEDIDA', HOTRO];
@@ -80,7 +82,7 @@ function buildCDs(wb) {
       return { servicio: rawId(o.nro_servicio), cuenta: rawId(o.nro_cuenta), direccion: String(o.direccion ?? '').trim(), medidor: rawId(o.nro_medidor), marca: String(o.marca_medidor ?? '').trim().toUpperCase(), periodoUlt: rawId(o.periodo_ultima_lectura), ultimaLectura: num(o.ultima_lectura), facturacion: String(o.facturacion ?? '').trim(), carga: num(o.carga_aforada), lat: co.lat, lon: co.lon, clase: String(o.clase_servicio ?? '').trim().toUpperCase(), cosecha: String(o.cosecha ?? '').trim(), reinc: num(o.reincidencias) || 0, imputada: num(o.energia_imputada) || 0, cons };
     });
     return {
-      id, creado: new Date().toISOString(), ot: '', placa: '', exportadoEn: null,
+      id, creado: new Date().toISOString(), ot: '', placa: '', capacidad: '', hallazgosCD: [], setup: false, exportadoEn: null,
       meta: { circuito: String(b0.circuito ?? '').trim(), codCircuito: String(b0.cod_circuito ?? '').trim(), potencia: num(b0.potencia_kva), tipoRed: String(b0.tipo_red ?? '').trim(), direccion: String(b0.direccion ?? '').trim(), lat: c0.lat, lon: c0.lon, cantClientes: num(b0.cant_clientes), tecnologia: String(b0.tecnologia_macro ?? '').trim() },
       balances: b.map(o => ({ periodo: rawId(o.periodo), entradas: num(o.entradas), salidas: num(o.salidas), perdidas: num(o.perdidas), indice: num(o.indice) })),
       ficha, registros: []
@@ -110,7 +112,7 @@ function otherCD(cd, q) { // ¿aparece en la ficha de otro CD cargado?
   for (const id in S.cds) { if (id === cd.id) continue; const m = matchFicha(S.cds[id], q); if (m.i != null) out.push(id); }
   return out;
 }
-const CL = { 1: { t: 'EN FICHA Y DEL CIRCUITO', c: 'ok' }, 2: { t: 'EN FICHA, FUERA DEL CIRCUITO', c: 'bad' }, 3: { t: 'NO EN FICHA, DEL CIRCUITO', c: 'new' }, 0: { t: 'NO EN FICHA NI DEL CIRCUITO', c: 'none' } };
+const CL = { 1: { t: 'EN FICHA Y DEL CIRCUITO', c: 'ok' }, 2: { t: 'EN FICHA, NO VINCULADO A ESTE CIRCUITO', c: 'bad' }, 3: { t: 'NO EN FICHA, DEL CIRCUITO', c: 'new' }, 0: { t: 'CLIENTE NO VINCULADO A ESTE CIRCUITO (NO EN FICHA)', c: 'bad' } };
 function clasif(cd, r, m) {
   if (r.tipo === 'UNC') return 3;
   m = m || matchFicha(cd, r);
@@ -119,19 +121,19 @@ function clasif(cd, r, m) {
 }
 
 // ---------- exportación: Excel con 3 tablas ----------
-const COLS = ['ID_REGISTRO', 'CD', 'OT', 'FECHA_HORA', 'TECNICO', 'TIPO_USUARIO', 'CLASIFICACION', 'NRO_SERVICIO', 'NRO_CUENTA', 'NRO_MEDIDOR', 'MARCA_MEDIDOR', 'LECTURA_ENERGIA_ACTIVA', 'ACTIVIDAD_ECONOMICA', 'DIRECCION', 'LATITUD', 'LONGITUD', 'PRECISION_M', 'FECHA_CAPTURA_COORD', 'HALLAZGO_PERDIDAS', 'OBSERVACION', 'PLACA_TRANSFORMADOR', 'CD_CORRECTO', 'OT_CD_CORRECTO', 'FICHA_MEDIDOR', 'FICHA_MARCA', 'DIFIERE_MEDIDOR'];
-const WIDTHS = [14, 11, 14, 19, 22, 13, 30, 14, 12, 14, 14, 12, 16, 34, 12, 12, 10, 19, 40, 40, 40, 14, 14, 14, 14, 10];
+const COLS = ['ID_REGISTRO', 'CD', 'OT', 'FECHA_HORA', 'TECNICO', 'TIPO_USUARIO', 'CLASIFICACION', 'NRO_SERVICIO', 'NRO_CUENTA', 'NRO_MEDIDOR', 'MARCA_MEDIDOR', 'LECTURA_ENERGIA_ACTIVA', 'ACTIVIDAD_ECONOMICA', 'DIRECCION', 'LATITUD', 'LONGITUD', 'PRECISION_M', 'FECHA_CAPTURA_COORD', 'HALLAZGO_PERDIDAS', 'OBSERVACION', 'PLACA_TRANSFORMADOR', 'CAPACIDAD_KVA', 'HALLAZGOS_CD', 'CD_CORRECTO', 'KVA_CD_CORRECTO', 'OT_CD_CORRECTO', 'FICHA_MEDIDOR', 'FICHA_MARCA', 'DIFIERE_MEDIDOR'];
+const WIDTHS = [14, 11, 14, 19, 22, 13, 30, 14, 12, 14, 14, 12, 16, 34, 12, 12, 10, 19, 40, 40, 40, 12, 50, 14, 12, 14, 14, 14, 10];
 function buildSheets(cd) {
   const rows = { 1: [], 2: [], 3: [] };
   [...cd.registros].sort((a, b) => a.creado.localeCompare(b.creado)).forEach(r => {
-    const m = r.tipo === 'CLIENTE' ? matchFicha(cd, r) : { i: null }, c = clasif(cd, r, m); if (!c) return;
+    const m = r.tipo === 'CLIENTE' ? matchFicha(cd, r) : { i: null }, c0 = clasif(cd, r, m); if (c0 == null) return; const c = c0 === 0 ? 2 : c0;
     const f = m.i != null ? cd.ficha[m.i] : null;
     const dif = f && f.medidor && r.medidor && idn(f.medidor) !== idn(r.medidor) ? 'SI' : (f ? 'NO' : '');
-    rows[c].push([r.id, cd.id, cd.ot || '', r.fecha || '', r.tecnico || '', r.tipo === 'UNC' ? 'UNC' : 'CLIENTE', CL[c].t, r.servicio || '', r.cuenta || '', r.medidor || '', r.marca || '', num(r.lectura), r.actividad || '', r.direccion || (f ? f.direccion : ''), r.lat, r.lon, r.prec == null ? null : Math.round(r.prec * 10) / 10, r.capAt ? stamp(new Date(r.capAt)) : '', r.hallazgo || '', r.obs || '', cd.placa || '', c === 2 ? r.cdReal || '' : '', c === 2 ? r.otReal || '' : '', f ? f.medidor : '', f ? f.marca : '', dif]);
+    rows[c].push([r.id, cd.id, cd.ot || '', r.fecha || '', r.tecnico || '', r.tipo === 'UNC' ? 'UNC' : 'CLIENTE', CL[c0].t, r.servicio || '', r.cuenta || '', r.medidor || '', r.marca || '', num(r.lectura), r.actividad || '', r.direccion || (f ? f.direccion : ''), r.lat, r.lon, r.prec == null ? null : Math.round(r.prec * 10) / 10, r.capAt ? stamp(new Date(r.capAt)) : '', r.hallazgo || '', r.obs || '', cd.placa || '', cd.capacidad || '', (cd.hallazgosCD || []).join(' | '), c === 2 ? r.cdReal || '' : '', c === 2 ? r.capReal || '' : '', c === 2 ? r.otReal || '' : '', f ? f.medidor : '', f ? f.marca : '', dif]);
   });
   return [
     { name: '1_EN_FICHA_DEL_CIRCUITO', table: 'tblEnFichaDelCircuito', columns: COLS, rows: rows[1], widths: WIDTHS },
-    { name: '2_EN_FICHA_FUERA_CIRCUITO', table: 'tblEnFichaFueraCircuito', columns: COLS, rows: rows[2], widths: WIDTHS },
+    { name: '2_FUERA_DEL_CIRCUITO', table: 'tblFueraDelCircuito', columns: COLS, rows: rows[2], widths: WIDTHS },
     { name: '3_NO_FICHA_DEL_CIRCUITO', table: 'tblNoFichaDelCircuito', columns: COLS, rows: rows[3], widths: WIDTHS }
   ];
 }
@@ -144,6 +146,9 @@ async function entregar(blob, name, compartir) {
 }
 const baseName = cd => `GS_VCT_CD${cd.id}_${today()}`;
 async function exportarExcel(cd, compartir) {
+  if (!otOk(cd.ot)) return toast(`La OT del CD debe tener ${OT_LEN} dígitos`);
+  if (!setupOk(cd)) return toast('Completa los datos del CD');
+  if (!await revisarFuera(cd)) return;
   const blob = mkBlob(XLSXLite.writeXlsx(buildSheets(cd)), XLSX_MIME);
   if (await entregar(blob, baseName(cd) + '.xlsx', compartir)) { cd.exportadoEn = new Date().toISOString(); await saveCD(cd); render(); }
 }
@@ -165,7 +170,7 @@ function stats(cd) {
   const reg = new Map(); let t1 = 0, t2 = 0, t3 = 0, unc = 0, inv = 0;
   cd.registros.forEach(r => {
     const m = r.tipo === 'CLIENTE' ? matchFicha(cd, r) : { i: null }; if (m.i != null) reg.set(m.i, r);
-    const c = clasif(cd, r, m); if (c === 1) t1++; else if (c === 2) t2++; else if (c === 3) t3++; else inv++; if (r.tipo === 'UNC') unc++;
+    const c = clasif(cd, r, m); if (c === 1) t1++; else if (c === 2 || c === 0) t2++; else if (c === 3) t3++; else inv++; if (r.tipo === 'UNC') unc++;
   });
   return { reg, total: cd.ficha.length, visit: reg.size, pend: cd.ficha.length - reg.size, t1, t2, t3, unc, inv, n: cd.registros.length };
 }
@@ -178,7 +183,7 @@ function header() {
   return `<header><button class="ib" data-act="home" aria-label="Volver">${ic('back')}</button><div class="brand"><div><h1>${esc(cd.id)}</h1><small>${esc(corto(cfg.usuario))} · ${esc(cd.meta.circuito)}${cd.meta.potencia ? ' · ' + cd.meta.potencia + ' kVA' : ''}${cd.meta.tipoRed ? ' · ' + esc(cd.meta.tipoRed) : ''}</small></div></div><div class="prog">${st.visit}/${st.total}</div></header>`;
 }
 function nav() {
-  if (S.view !== 'cd') return '';
+  if (S.view !== 'cd' || !curCD() || !curCD().setup) return '';
   const t = [['lista', ic('list'), 'Clientes'], ['reg', ic('plus'), 'Registrar'], ['mapa', ic('pin'), 'Mapa'], ['res', ic('sum'), 'Resumen']];
   return `<nav class="bottom">${t.map(([k, i, l]) => `<button data-tab="${k}" class="${S.tab === k ? 'on' : ''}">${i}${l}</button>`).join('')}</nav>`;
 }
@@ -209,7 +214,7 @@ function listHTML(cd) {
   if (!out.length) return '<div class="note">No hay resultados.</div>';
   return out.slice(0, 400).map(it => {
     const x = it.f || it.r, c = it.r ? clasif(cd, it.r) : null;
-    const chip = it.r ? (it.r.tipo === 'UNC' ? badge('unc', 'UNC') : badge(CL[c] ? CL[c].c : 'none', c === 1 ? 'Del circuito ✓' : c === 2 ? (otOk(it.r.otReal) ? 'Fuera del circuito' : 'Fuera · pedir OT') : c === 3 ? 'No en ficha' : 'Sin clasificar')) : badge('pend', 'Pendiente');
+    const chip = it.r ? (it.r.tipo === 'UNC' ? badge('unc', 'UNC') : badge(CL[c] ? CL[c].c : 'none', c === 1 ? 'Del circuito ✓' : c === 2 || c === 0 ? (otOk(it.r.otReal) ? 'Otro circuito ✓' : 'Otro circuito · falta OT') : c === 3 ? 'No en ficha' : 'Sin clasificar')) : badge('pend', 'Pendiente');
     const title = it.r && it.r.tipo === 'UNC' ? 'Usuario no cliente' : `Serv. ${esc(x.servicio || '—')} · Cta. ${esc(x.cuenta || '—')}`;
     const dir = x.direccion || (it.r && it.r.direccion) || '';
     const extra = it.f && (it.f.cosecha || !it.f.medidor) ? ` · <span style="color:var(--warn)">${esc(it.f.cosecha || 'Sin medidor en ficha')}</span>` : '';
@@ -217,7 +222,7 @@ function listHTML(cd) {
   }).join('') + (out.length > 400 ? '<div class="note">Mostrando 400; usa el buscador para acotar.</div>' : '');
 }
 
-function newForm(tipo = 'CLIENTE') { return { id: null, tipo, servicio: '', cuenta: '', medidor: '', marca: '', marcaOtra: '', lectura: '', actividad: '', pertenece: null, hallazgo: '', obs: '', direccion: '', lat: null, lon: null, prec: null, capAt: null, tecnico: cfg.usuario || '', cdReal: '', otReal: '' }; }
+function newForm(tipo = 'CLIENTE') { return { id: null, tipo, servicio: '', cuenta: '', medidor: '', marca: '', marcaOtra: '', lectura: '', actividad: '', pertenece: null, hallazgo: '', obs: '', direccion: '', lat: null, lon: null, prec: null, capAt: null, tecnico: cfg.usuario || '', cdReal: '', otReal: '', capReal: '' }; }
 function formFromRec(r) {
   const f = Object.assign(newForm(r.tipo), JSON.parse(JSON.stringify(r)));
   const lista = [...marcasList(), SINMED]; f.marcaOtra = ''; if (f.marca && !lista.includes(f.marca)) { f.marcaOtra = f.marca; f.marca = OTRA; }
@@ -239,8 +244,9 @@ function viewReg(cd) {
       <div class="fld"><label class="req">¿Es de este circuito?</label><div class="seg" data-seg="pertenece"><button data-v="1" class="${f.pertenece === true ? 'on' : ''}">SÍ</button><button data-v="0" class="${f.pertenece === false ? 'on no' : ''}">NO</button></div></div>
     </div>
     <div class="fld"><label>Clasificación</label><div id="clasif"></div></div>
-    <div data-show="otro" class="hidden"><div class="note warn">Es de otro CD: pide una OT para ese CD.</div>
+    <div data-show="otro" class="hidden"><div class="note warn">Cliente de otro circuito: registra el CD al que pertenece. La OT de ese CD es obligatoria antes de exportar.</div>
       <div class="fld" style="margin-top:12px"><label>CD correcto</label><input type="text" data-f="cdReal" value="${esc(f.cdReal)}" placeholder="XXXXTRX" style="text-transform:uppercase" autocomplete="off"></div>
+      <div class="fld"><label>Capacidad del CD correcto</label><select data-f="capReal">${opts(KVA.map(k => k + ' kVA'), f.capReal, 'Selecciona…')}</select></div>
       <div class="fld"><label>OT del CD correcto</label><input type="text" ${otAtt} data-f="otReal" value="${esc(f.otReal)}" autocomplete="off"></div></div></div>
     <div class="card"><h2>Ubicación y hallazgo</h2>
     <div class="fld"><label class="req">Actividad económica</label><select data-f="actividad">${opts(ACTIVIDADES, f.actividad, 'Selecciona…')}</select></div>
@@ -309,17 +315,47 @@ function mapPointer(ev, kind) {
 }
 
 // resumen ---------------------------------------------------
+function setupOk(cd) { return !!(cd.placa && cd.capacidad && cd.hallazgosCD && cd.hallazgosCD.length); }
+function cdFields(cd) {
+  if (!cd.capacidad && cd.meta.potencia != null && KVA.includes(String(cd.meta.potencia))) cd.capacidad = String(cd.meta.potencia);
+  return `<div class="fld"><label class="req">Verificación de la placa</label><select data-cdf="placa">${opts(PLACAS, cd.placa, 'Selecciona…')}</select></div>
+    <div class="fld"><label class="req">Capacidad</label><select data-cdf="capacidad">${opts(KVA, cd.capacidad, 'Selecciona…').replace(/>(\d[\d.]*)<\/option>/g, '>$1 kVA</option>')}</select></div>
+    <div class="fld"><label class="req">Hallazgos del CD</label><div class="chips">${HZ_CD.map(h => `<button class="chip${(cd.hallazgosCD || []).includes(h) ? ' on' : ''}" data-act="hz" data-v="${esc(h)}">${esc(h)}</button>`).join('')}</div></div>`;
+}
+function viewSetup(cd) {
+  return `<div class="card"><h2>Datos del CD ${esc(cd.id)}</h2>${cdFields(cd)}<button class="btn pri full" id="btnSetup" data-act="setup-ok"${setupOk(cd) ? '' : ' disabled'}>Continuar</button></div>${FOOT}`;
+}
+function revisarFuera(cd) {
+  const lst = cd.registros.filter(r => [0, 2].includes(clasif(cd, r)));
+  if (!lst.length) return Promise.resolve(true);
+  return new Promise(res => {
+    const box = document.createElement('div'); box.className = 'modal';
+    box.innerHTML = `<div class="box"><h3>OT de los CD correctos</h3><p style="color:var(--mut);font-size:13px">Estos clientes no son de este circuito. Registra el CD y la OT de cada uno para exportar.</p>${lst.map(r => `<div class="card" data-rid="${esc(r.id)}"><b>Serv. ${esc(r.servicio || '—')} · Cta. ${esc(r.cuenta || '—')}</b>
+      <div class="fld" style="margin:8px 0 0"><label>CD correcto</label><input type="text" data-ro="cd" value="${esc(r.cdReal || '')}" style="text-transform:uppercase" autocomplete="off"></div>
+      <div class="fld" style="margin:8px 0 0"><label>Capacidad</label><select data-ro="kva">${opts(KVA.map(k => k + ' kVA'), r.capReal, 'Selecciona…')}</select></div>
+      <div class="fld" style="margin:8px 0 0"><label class="req">OT del CD correcto</label><input type="text" ${otAtt} data-ro="ot" value="${esc(r.otReal || '')}" autocomplete="off"></div></div>`).join('')}
+      <div class="row"><button class="btn" id="roNo">Cancelar</button><button class="btn pri" id="roSi" disabled>Guardar y exportar</button></div></div>`;
+    document.body.appendChild(box);
+    const chk = () => { box.querySelectorAll('[data-ro="ot"]').forEach(i => i.value = i.value.replace(/\D/g, '').slice(0, OT_LEN)); box.querySelectorAll('[data-ro="cd"]').forEach(i => i.value = i.value.toUpperCase()); $('#roSi').disabled = !lst.every(r => { const c = box.querySelector(`[data-rid="${r.id}"]`); return otOk(c.querySelector('[data-ro="ot"]').value) && c.querySelector('[data-ro="cd"]').value.trim(); }); };
+    box.addEventListener('input', chk); chk();
+    $('#roNo').onclick = () => { box.remove(); res(false); };
+    $('#roSi').onclick = async () => {
+      lst.forEach(r => { const c = box.querySelector(`[data-rid="${r.id}"]`); r.cdReal = c.querySelector('[data-ro="cd"]').value.trim(); r.capReal = c.querySelector('[data-ro="kva"]').value; r.otReal = c.querySelector('[data-ro="ot"]').value; });
+      await saveCD(cd); box.remove(); res(true);
+    };
+  });
+}
 function viewRes(cd) {
   const s = stats(cd), warns = [];
-  if (!otOk(cd.ot)) warns.push(`La OT del CD debe tener ${OT_LEN} dígitos.`); if (!cd.placa) warns.push('Falta la verificación de la placa del transformador.');
-  const sinOT = cd.registros.filter(r => clasif(cd, r) === 2 && !otOk(r.otReal)).length; if (sinOT) warns.push(`${sinOT} cliente(s) son de otro CD: falta la OT de ese CD.`);
-  if (s.pend) warns.push(`Quedan ${s.pend} clientes de la ficha sin registrar.`); if (s.inv) warns.push(`${s.inv} registro(s) no se exportan (no están en ficha ni son del circuito).`);
+  if (!otOk(cd.ot)) warns.push(`La OT del CD debe tener ${OT_LEN} dígitos.`); if (!setupOk(cd)) warns.push('Faltan datos del CD (placa, capacidad o hallazgos).');
+  const sinOT = cd.registros.filter(r => [0, 2].includes(clasif(cd, r)) && !otOk(r.otReal)).length; if (sinOT) warns.push(`${sinOT} cliente(s) de otro circuito sin OT: se piden al exportar.`);
+  if (s.pend) warns.push(`Quedan ${s.pend} clientes de la ficha sin registrar.`);
   return `<div class="card"><h2>Datos de la visita</h2>
     <div class="fld"><label>Rótulo del transformador (CD)</label><input type="text" value="${esc(cd.id)}" readonly></div>
     <div class="fld"><label class="req">N° de orden de trabajo (OT)</label><input type="text" ${otAtt} data-cdf="ot" value="${esc(cd.ot)}" autocomplete="off"></div>
-    <div class="fld"><label class="req">Verificación de la placa</label><select data-cdf="placa">${opts(PLACAS, cd.placa, 'Selecciona…')}</select></div></div>
+    </div><div class="card"><h2>Datos del CD</h2>${cdFields(cd)}</div>
     <div class="card"><h2>Avance</h2><div class="kpis"><div class="kpi"><b>${s.visit}/${s.total}</b><span>Ficha visitada</span></div><div class="kpi"><b>${s.pend}</b><span>Pendientes</span></div><div class="kpi"><b>${s.unc}</b><span>UNC</span></div>
-    <div class="kpi"><b style="color:var(--ok)">${s.t1}</b><span>Tabla 1<br>En ficha, del circuito</span></div><div class="kpi"><b style="color:var(--bad)">${s.t2}</b><span>Tabla 2<br>En ficha, fuera</span></div><div class="kpi"><b style="color:var(--new)">${s.t3}</b><span>Tabla 3<br>No en ficha, del circuito</span></div></div>
+    <div class="kpi"><b style="color:var(--ok)">${s.t1}</b><span>Tabla 1<br>En ficha, del circuito</span></div><div class="kpi"><b style="color:var(--bad)">${s.t2}</b><span>Tabla 2<br>Fuera del circuito</span></div><div class="kpi"><b style="color:var(--new)">${s.t3}</b><span>Tabla 3<br>No en ficha, del circuito</span></div></div>
     ${warns.map(w => `<div class="note warn">${esc(w)}</div>`).join('')}</div>
     <div class="card"><h2>Exportar</h2><div class="row"><button class="btn pri" data-act="xlsx">Exportar Excel</button><button class="btn" data-act="xlsx-share">Compartir</button></div>
     <div class="row" style="margin-top:8px"><button class="btn" data-act="json">Respaldo</button><button class="btn bad" data-act="del-cd">Eliminar CD</button></div>
@@ -333,6 +369,7 @@ function viewRes(cd) {
 function render() {
   const cd = curCD(); let body = '';
   if (S.view === 'home') body = viewHome();
+  else if (cd && !cd.setup) body = viewSetup(cd);
   else if (cd) body = S.tab === 'lista' ? viewLista(cd) : S.tab === 'reg' ? viewReg(cd) : S.tab === 'mapa' ? viewMapa() : viewRes(cd);
   const key = S.view + ':' + S.tab + ':' + (cfg.usuario ? 1 : 0) + ':' + (S.cur || ''), cambio = key !== S._key; S._key = key;
   $('#root').innerHTML = header() + `<main${cambio ? ' class="enter"' : ''}>${body}</main>` + nav();
@@ -351,8 +388,7 @@ function validar(cd, f, m) {
     if (!f.marca) e.push('Marca del medidor'); else if (f.marca === OTRA && !f.marcaOtra.trim()) e.push('Escribe la marca');
     if (f.marca !== SINMED) { if (!f.medidor.trim()) e.push('N° de medidor'); if (f.lectura === '' || num(f.lectura) == null) e.push('Lectura de energía activa'); }
     if (f.pertenece == null) e.push('¿Es de este circuito? (SÍ / NO)');
-    if (m.i != null && f.pertenece === false && f.otReal && !otOk(f.otReal)) e.push(`OT del CD correcto (${OT_LEN} dígitos)`);
-    if (m.i == null && f.pertenece === false) e.push('No está en la ficha ni es del circuito: no se registra');
+    if (f.pertenece === false && f.otReal && !otOk(f.otReal)) e.push(`OT del CD correcto (${OT_LEN} dígitos)`);
   }
   if (!f.actividad) e.push('Actividad económica');
   if (unc) { if (f.lat == null) e.push('Capturar coordenada (obligatoria para UNC)'); }
@@ -382,8 +418,8 @@ function updateDerived() {
   // tarjeta de coincidencia
   const mc = $('#matchCard'); if (mc) mc.innerHTML = unc ? '' : matchHTML(cd, f, m);
   // clasificación
-  const c = clasif(cd, f, m); $('#clasif').innerHTML = c == null ? '<span class="badge pend">Responde “¿es de este circuito?”</span>' : badge(CL[c].c, CL[c].t) + (c === 0 ? '<div class="note err">No se registra.</div>' : '');
-  sh('otro', c === 2);
+  const c = clasif(cd, f, m); $('#clasif').innerHTML = c == null ? '<span class="badge pend">Responde “¿es de este circuito?”</span>' : badge(CL[c].c, CL[c].t) + '';
+  sh('otro', c === 2 || c === 0);
   // lectura vs última
   const lh = $('#lectHint'); if (lh) { const fi = m.i != null ? cd.ficha[m.i] : null, v = num(f.lectura); lh.innerHTML = fi && fi.ultimaLectura != null ? `Última lectura en ficha: ${fmt(fi.ultimaLectura)} (periodo ${esc(fi.periodoUlt)})` + (v != null && v < fi.ultimaLectura ? ' <b style="color:var(--bad)">· la lectura es menor a la última: revisa</b>' : '') : ''; }
   // errores
@@ -402,7 +438,7 @@ async function guardar() {
   const cd = curCD(), f = S.form, unc = f.tipo === 'UNC', m = unc ? { i: null } : matchFicha(cd, f), errs = validar(cd, f, m);
   if (errs.length) return toast('Falta: ' + errs[0]);
   const marca = unc ? '' : marcaFinal(f); if (marca && f.marca === OTRA && !marcasList().includes(marca)) { (cfg.marcasExtra = cfg.marcasExtra || []).push(marca); await saveCfg(); }
-  const rec = { id: f.id || uid(), tipo: f.tipo, servicio: unc ? '' : f.servicio.trim(), cuenta: unc ? '' : f.cuenta.trim(), medidor: unc || f.marca === SINMED ? '' : f.medidor.trim(), marca: unc ? '' : marca, lectura: unc || f.marca === SINMED ? null : num(f.lectura), actividad: f.actividad, pertenece: unc ? true : f.pertenece, hallazgo: f.hallazgo, obs: f.obs.trim().toUpperCase(), direccion: f.direccion.trim().toUpperCase(), lat: f.lat, lon: f.lon, prec: f.prec, capAt: f.capAt, cdReal: !unc && f.pertenece === false && m.i != null ? f.cdReal.trim().toUpperCase() : '', otReal: !unc && f.pertenece === false && m.i != null ? f.otReal.trim().toUpperCase() : '', tecnico: f.tecnico || cfg.usuario, fecha: f.fecha || stamp(), creado: f.creado || new Date().toISOString(), editado: new Date().toISOString() };
+  const rec = { id: f.id || uid(), tipo: f.tipo, servicio: unc ? '' : f.servicio.trim(), cuenta: unc ? '' : f.cuenta.trim(), medidor: unc || f.marca === SINMED ? '' : f.medidor.trim(), marca: unc ? '' : marca, lectura: unc || f.marca === SINMED ? null : num(f.lectura), actividad: f.actividad, pertenece: unc ? true : f.pertenece, hallazgo: f.hallazgo, obs: f.obs.trim().toUpperCase(), direccion: f.direccion.trim().toUpperCase(), lat: f.lat, lon: f.lon, prec: f.prec, capAt: f.capAt, cdReal: !unc && f.pertenece === false ? f.cdReal.trim().toUpperCase() : '', capReal: !unc && f.pertenece === false ? f.capReal : '', otReal: !unc && f.pertenece === false ? f.otReal.trim().toUpperCase() : '', tecnico: f.tecnico || cfg.usuario, fecha: f.fecha || stamp(), creado: f.creado || new Date().toISOString(), editado: new Date().toISOString() };
   const i = cd.registros.findIndex(r => r.id === rec.id); if (i >= 0) cd.registros[i] = rec; else cd.registros.push(rec);
   await saveCD(cd);
   toast('✓ Registro guardado'); const back = S.from; S.form = newForm(unc ? 'UNC' : 'CLIENTE'); S._autoI = null; S.from = 'reg'; S.tab = back === 'lista' ? 'lista' : 'reg'; render();
@@ -494,6 +530,8 @@ document.addEventListener('click', async ev => {
     case 'mz': MAP.z = Math.min(40, Math.max(0.3, MAP.z * +t.dataset.v)); return drawMap();
     case 'mc': MAP.z = 1; MAP.dx = 0; MAP.dy = 0; return drawMap();
     case 'mgps': return mapGPS();
+    case 'hz': { const v = t.dataset.v, a = cd.hallazgosCD = cd.hallazgosCD || []; const i = a.indexOf(v); if (i >= 0) a.splice(i, 1); else { if (v === 'SIN HALLAZGOS') a.length = 0; else { const k = a.indexOf('SIN HALLAZGOS'); if (k >= 0) a.splice(k, 1); } a.push(v); } await saveCD(cd); document.querySelectorAll('[data-act="hz"]').forEach(b => b.classList.toggle('on', a.includes(b.dataset.v))); const bs = $('#btnSetup'); if (bs) bs.disabled = !setupOk(cd); return; }
+    case 'setup-ok': if (!setupOk(cd)) return toast('Completa placa, capacidad y hallazgos'); cd.setup = true; await saveCD(cd); S.tab = 'lista'; return render();
     case 'xlsx': return exportarExcel(cd, false);
     case 'xlsx-share': return exportarExcel(cd, true);
     case 'json': return exportarJSON(cd);
@@ -513,7 +551,7 @@ document.addEventListener('input', ev => {
 });
 document.addEventListener('change', async ev => {
   const el = ev.target; if (el.dataset.usr !== undefined && el.value) { cfg.usuario = el.value; await saveCfg(); S.form = newForm(); return render(); } if (el.id === 'fx' && el.files[0]) { cargarExcel(el.files[0]); el.value = ''; } if (el.id === 'fj' && el.files[0]) { cargarJSON(el.files[0]); el.value = ''; }
-  if (el.dataset.cdf) { const cd = curCD(); cd[el.dataset.cdf] = el.value; saveCD(cd); }
+  if (el.dataset.cdf) { const cd = curCD(); cd[el.dataset.cdf] = el.value; saveCD(cd); const bs = $('#btnSetup'); if (bs) bs.disabled = !setupOk(cd); }
 });
 document.addEventListener('pointerdown', e => { if (e.target.id === 'map') mapPointer(e, 'down'); });
 document.addEventListener('pointermove', e => { if (e.target.id === 'map') mapPointer(e, 'move'); });
