@@ -149,7 +149,7 @@ async function entregar(blob, name, compartir) {
   if (compartir && navigator.canShare) { const f = new File([blob], name, { type: blob.type }); if (navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f], title: name }); return true; } catch (e) { if (e.name === 'AbortError') return false; } } }
   download(blob, name); return true;
 }
-const baseName = cd => `GS_VCT_CD${cd.id}_${today()}`;
+const baseName = cd => `${cd.id}_${today()}`;
 async function exportarExcel(cd, compartir) {
   if (!otOk(cd.ot)) return toast(`La OT del CD debe tener ${OT_LEN} dígitos`);
   if (!setupOk(cd)) return toast('Completa los datos del CD');
