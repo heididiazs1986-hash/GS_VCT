@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.8.2';
+const VER = '1.8.3';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
