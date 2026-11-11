@@ -184,7 +184,7 @@ function stats(cd) {
 // ---------- vistas ----------
 function header() {
   const cd = curCD();
-  if (S.view === 'home') return `<header><div class="brand">${LOGO}<div><h1>GS VCT</h1>${cfg.usuario ? '' : '<small>Vínculo Cliente – Transformador</small>'}</div></div>${cfg.usuario ? `<button class="ib who" data-act="cambiar-usuario" aria-label="Cambiar usuario"><span>${esc(corto(cfg.usuario))}</span>${ic('user')}</button>` : ''}</header>`;
+  if (S.view === 'home') return `<header><div class="brand">${LOGO}<div><h1>GS VCT</h1>${cfg.usuario ? '' : '<small>Vínculo Cliente – Transformador</small>'}</div></div>${cfg.usuario ? `<div class="ib who" style="cursor:default"><span>${esc(corto(cfg.usuario))}</span>${ic('user')}</div>` : ''}</header>`;
   const st = stats(cd);
   return `<header><button class="ib" data-act="home" aria-label="Volver">${ic('back')}</button><div class="brand"><div><h1>${esc(cd.id)}</h1><small>${esc(corto(cfg.usuario))} · ${esc(cd.meta.circuito)}${cd.meta.potencia ? ' · ' + cd.meta.potencia + ' kVA' : ''}${cd.meta.tipoRed ? ' · ' + esc(cd.meta.tipoRed) : ''}</small></div></div><div class="prog">${st.visit}/${st.total}</div></header>`;
 }
