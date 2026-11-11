@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.0.9';
+const VER = '1.1.0';
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -39,14 +39,14 @@ const HALLAZGOS = ['SIN HALLAZGO', 'MEDIDOR SIN SELLOS / SELLOS VIOLADOS', 'MEDI
 // Marcas: las que trae la ficha del Excel (CLIENTES.marca_medidor) + las que se escriban con "OTRA"
 const MARCAS_BASE = ['SKAITEKS', 'NINGBO', 'HEXING', 'COMPLANT', 'ENEL', '@METER', 'KRIZIK', 'NANSEN'];
 const marcasList = () => { const m = new Set(MARCAS_BASE); Object.values(S.cds).forEach(cd => cd.ficha.forEach(f => { if (f.marca) m.add(f.marca); })); (cfg.marcasExtra || []).forEach(x => m.add(x)); return [...m]; };
-const defaultCfg = () => ({ ultimoTecnico: '', marcasExtra: [] });
+const defaultCfg = () => ({ usuario: '', marcasExtra: [] });
 // Técnicos: activos de AP_Usuarios (2026-09-28)
 const TECNICOS = ["ACOSTA JUAN CARLOS", "AGUIAR OLIVERA EDUVINO", "AMAYA TRIANA LUIS ALEJANDRO", "ARDILA AMADO ELKIN", "BABILONIA THOMAS FERNANDO LUIS", "BAEZ JUAN CARLOS", "BARRAGAN BARRERA ANA MARIA", "BUITRAGO CUESTA JONATHAN ALEXIS", "CAÑON GONZALEZ RICARDO IGNACIO", "CARDENAS GOMEZ RAMIRO", "CASTAÑEDA MINZON HERNAN", "CASTELLANOS KILLY SEBASTIAN", "DAZA MORENO DUBAN STIVEN", "DIAZ CATILLA CARLOS ALBERTO", "DIAZ RODRIGUEZ NELSON FERNANDO", "FERNANDEZ SALAS JOHAN SEBASTIAN", "FONSECA SANTANA WILLIAM GIUSEPPE", "GALINDO TORRES HELVER MARTIN", "GONZALEZ CIFUENTES SOFIA LORENA", "GUERRERO RODRIGUEZ KEVIN CAMILO", "GUEVARA PÉREZ ANTONY", "HEIDI YURISSA DIAZ SANABRIA", "HERNANDEZ SILVA JHON EDWAR", "IZQUIERDO MURCIA CARLOS EDUARDO", "JIMENEZ CASTILLO OSCAR FERNANDO", "LOPEZ SUAREZ RICARDO ENRIQUE", "OLIVERO ROCHA IVAN DAVID", "ORTIZ RODRIGUEZ CARLOS FELIPE", "PADILLA ALISON", "PERDOMO RAMIREZ CRISTIAN DAVID", "PEREZ PIRA RIVEL ESTEBAN", "PEREZ ROA JOSE ALFREDO", "PINEDA AGUILAR WILKER DE JESUS", "PINZON TOVAR BRAYAN FELIPE", "PORRAS RODRIGUEZ BRIAM STEVENS", "QUEMBA CAROLINA", "QUIJANO CARDOSO JOHN JAIRO", "RAMIREZ BARAHONA FERNEY", "RAMIREZ CEPEDA BRAYAN HERNAN", "RAMIREZ MARTINEZ MIGUEL ALEJANDRO", "REYES HERNANDEZ SEBASTIAN DAVID", "ROBAYO BOHORQUEZ CARLOS ENRIQUE", "ROJAS CRUZ KEVIN YESSITH", "ROMERO JOHN FREDY", "ROMERO SERNA LUIS CAMILO", "RONCANCIO RINCON FABIAN ANDRES", "SUAREZ CADENA CARLOS FELIPE", "TIQUE TIQUE YECID", "TRIANA SOLER JOHN ALEXANDER", "VALBUENA LOZANO BRAYAN DAVID", "VARGAS ROMERO JAIRO ANDRES", "VERGARA MANRIQUE VICTOR HERNAN"];
 let cfg = defaultCfg();
 const saveCfg = () => dbPutKV('cfg', cfg);
 
 // ---------- estado ----------
-const S = { logo: 'logo.png', view: 'home', tab: 'lista', cds: {}, cur: null, q: '', flt: 'todos', form: null, from: 'reg', pos: null, sel: null, _autoI: null };
+const S = { view: 'home', tab: 'lista', cds: {}, cur: null, q: '', flt: 'todos', form: null, from: 'reg', pos: null, sel: null, _autoI: null };
 const curCD = () => S.cur ? S.cds[S.cur] : null;
 const saveCD = cd => dbPutCD(cd);
 
@@ -63,10 +63,10 @@ function buildCDs(wb) {
   const names = Object.keys(wb);
   const cn = names.find(n => norm(n) === 'clientes') || names.find(n => (wb[n].find(r => r && r.length) || []).map(norm).includes('nro_servicio'));
   const bn = names.find(n => norm(n).includes('balance'));
-  if (!cn) throw new Error('No encontré la hoja CLIENTES en el Excel');
+  if (!cn) throw new Error('No encontré la hoja CLIENTES en la ficha');
   const cl = sheetObjs(wb[cn]), bl = bn ? sheetObjs(wb[bn]) : [];
   const ids = []; [...cl, ...bl].forEach(o => { const id = rawId(o.cd); if (id && !ids.includes(id)) ids.push(id); });
-  if (!ids.length) throw new Error('No encontré la columna CD en el Excel');
+  if (!ids.length) throw new Error('No encontré la columna CD en la ficha');
   return ids.map(id => {
     const b = bl.filter(o => rawId(o.cd) === id).sort((x, y) => String(y.periodo).localeCompare(String(x.periodo)));
     const b0 = b[0] || {}; const c0 = fixCoord(b0.latitud, b0.longitud);
@@ -150,7 +150,7 @@ async function exportarJSON(cd) {
 // ---------- utilidades de interfaz ----------
 let toastT; function toast(msg, ms = 2600) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms); }
 const opts = (list, sel, ph) => (ph != null ? `<option value="">${esc(ph)}</option>` : '') + list.map(o => `<option value="${esc(o)}"${o === sel ? ' selected' : ''}>${esc(o)}</option>`).join('');
-const ICO = { back: '<path d="M15 5l-7 7 7 7"/>', list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>', plus: '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>', pin: '<path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>', sum: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 15v-3M12 15V9M16 15v-5"/>', mic: '<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>' };
+const ICO = { back: '<path d="M15 5l-7 7 7 7"/>', list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>', plus: '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>', pin: '<path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>', sum: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 15v-3M12 15V9M16 15v-5"/>', user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>', mic: '<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>' };
 const ic = k => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICO[k]}</svg>`;
 const LOGO = `<svg width="36" height="36" viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="24" fill="#FF6600"/><circle cx="40" cy="46" r="21" fill="none" stroke="#fff" stroke-width="6"/><circle cx="60" cy="46" r="21" fill="none" stroke="#fff" stroke-width="6"/><path d="M8 46h11M81 46h11" stroke="#fff" stroke-width="6" stroke-linecap="round"/><text x="50" y="88" font-size="18" font-weight="800" fill="#fff" text-anchor="middle" font-family="Manrope,Arial,sans-serif">VCT</text></svg>`;
 const FOOT = '<div class="foot">GS VCT v' + VER + ' · Desarrollado por Heidi Díaz</div>';
@@ -167,10 +167,10 @@ function stats(cd) {
 
 // ---------- vistas ----------
 function header() {
-  const cd = curCD(); const lg = S.logo ? `<img class="lg" alt="" src="${esc(S.logo)}" onerror="this.remove()">` : '';
-  if (S.view === 'home') return `<header><div class="brand">${LOGO}<div><h1>GS VCT</h1><small>Vínculo Cliente – Transformador</small></div></div>${lg}</header>`;
+  const cd = curCD();
+  if (S.view === 'home') return `<header><div class="brand">${LOGO}<div><h1>GS VCT</h1><small>${esc(cfg.usuario || 'Vínculo Cliente – Transformador')}</small></div></div>${cfg.usuario ? `<button class="ib" data-act="cambiar-usuario" aria-label="Cambiar usuario">${ic('user')}</button>` : ''}</header>`;
   const st = stats(cd);
-  return `<header><button class="ib" data-act="home" aria-label="Volver">${ic('back')}</button><div class="brand"><div><h1>${esc(cd.id)}</h1><small>${esc(cd.meta.circuito)}${cd.meta.potencia ? ' · ' + cd.meta.potencia + ' kVA' : ''}${cd.meta.tipoRed ? ' · ' + esc(cd.meta.tipoRed) : ''}${cd.ot ? ' · OT ' + esc(cd.ot) : ''}</small></div></div>${lg}<div class="prog">${st.visit}/${st.total}</div></header>`;
+  return `<header><button class="ib" data-act="home" aria-label="Volver">${ic('back')}</button><div class="brand"><div><h1>${esc(cd.id)}</h1><small>${esc(cd.meta.circuito)}${cd.meta.potencia ? ' · ' + cd.meta.potencia + ' kVA' : ''}${cd.meta.tipoRed ? ' · ' + esc(cd.meta.tipoRed) : ''}${cd.ot ? ' · OT ' + esc(cd.ot) : ''}</small></div></div><div class="prog">${st.visit}/${st.total}</div></header>`;
 }
 function nav() {
   if (S.view !== 'cd') return '';
@@ -178,15 +178,12 @@ function nav() {
   return `<nav class="bottom">${t.map(([k, i, l]) => `<button data-tab="${k}" class="${S.tab === k ? 'on' : ''}">${i}${l}</button>`).join('')}</nav>`;
 }
 function viewHome() {
+  const hero = '<div class="hero"><img src="banner.svg" alt=""><div class="ttl"><b>Vínculo Cliente –<br>Transformador</b></div></div>';
+  if (!cfg.usuario) return `${hero}<div class="card"><h2>Usuario</h2><select data-usr>${opts(TECNICOS, '', 'Selecciona tu nombre')}</select></div>${FOOT}`;
   const list = Object.values(S.cds).sort((a, b) => b.creado.localeCompare(a.creado));
-  return `<div class="hero"><img src="banner.svg" alt=""><div class="ttl"><b>Vínculo Cliente –<br>Transformador</b></div></div><div class="card"><h2>Crear CD desde Excel</h2>
-    <p>Carga el Excel del transformador (hojas <b>CLIENTES</b> y <b>BALANCES</b>). Si trae varios CD, se crean todos.</p>
-    <label class="btn pri full"><input type="file" id="fx" accept=".xlsx" hidden>Cargar Excel del CD</label>
-    <p style="font-size:12.5px;color:var(--mut)">Funciona sin conexión. Cada CD queda separado de los demás.</p>
-    <label class="btn sm"><input type="file" id="fj" accept=".json" hidden>Restaurar respaldo (.json)</label></div>
-    ${list.length ? '<h3>CD cargados</h3>' : '<div class="note">Aún no hay CD. Carga el Excel para empezar.</div>'}
-    ${list.map(cd => { const s = stats(cd); return `<button class="it" data-act="open-cd" data-id="${esc(cd.id)}"><div class="t"><span>${esc(cd.id)} <span style="font-weight:500;color:var(--mut)">· ${esc(cd.meta.circuito)}</span></span><span class="badge ${s.pend === 0 && s.total ? 'ok' : 'pend'}">${s.visit}/${s.total}</span></div><div class="s">${s.n} registros · ${s.t3} fuera de ficha · ${cd.exportadoEn ? 'exportado ' + esc(stamp(new Date(cd.exportadoEn)).slice(0, 16)) : 'sin exportar'}</div></button>`; }).join('')}
-    ${FOOT}`;
+  return `${hero}<label class="btn pri full" style="margin-bottom:14px"><input type="file" id="fx" accept=".xlsx" hidden>Cargar ficha</label>
+    ${list.map(cd => { const s = stats(cd); return `<button class="it" data-act="open-cd" data-id="${esc(cd.id)}"><div class="t"><span>${esc(cd.id)} <span style="font-weight:500;color:var(--mut)">· ${esc(cd.meta.circuito)}</span></span><span class="badge ${s.pend === 0 && s.total ? 'ok' : 'pend'}">${s.visit}/${s.total}</span></div><div class="s">${s.n} registros${cd.ot ? ' · OT ' + esc(cd.ot) : ''}${cd.exportadoEn ? '' : ' · sin exportar'}</div></button>`; }).join('')}
+    <div style="text-align:center;margin-top:10px"><label class="btn sm"><input type="file" id="fj" accept=".json" hidden>Restaurar respaldo</label></div>${FOOT}`;
 }
 function viewLista(cd) {
   const s = stats(cd), fl = S.flt;
@@ -215,7 +212,7 @@ function listHTML(cd) {
   }).join('') + (out.length > 400 ? '<div class="note">Mostrando 400; usa el buscador para acotar.</div>' : '');
 }
 
-function newForm(tipo = 'CLIENTE') { return { id: null, tipo, servicio: '', cuenta: '', medidor: '', marca: '', marcaOtra: '', lectura: '', actividad: '', pertenece: null, hallazgo: '', obs: '', direccion: '', lat: null, lon: null, prec: null, capAt: null, tecnico: cfg.ultimoTecnico || '' }; }
+function newForm(tipo = 'CLIENTE') { return { id: null, tipo, servicio: '', cuenta: '', medidor: '', marca: '', marcaOtra: '', lectura: '', actividad: '', pertenece: null, hallazgo: '', obs: '', direccion: '', lat: null, lon: null, prec: null, capAt: null, tecnico: cfg.usuario || '' }; }
 function formFromRec(r) {
   const f = Object.assign(newForm(r.tipo), JSON.parse(JSON.stringify(r)));
   const lista = [...marcasList(), SINMED]; f.marcaOtra = ''; if (f.marca && !lista.includes(f.marca)) { f.marcaOtra = f.marca; f.marca = OTRA; }
@@ -224,8 +221,8 @@ function formFromRec(r) {
 function viewReg(cd) {
   const f = S.form || (S.form = newForm()), unc = f.tipo === 'UNC';
   return `<div class="card"><h2>Usuario</h2>
-    <div class="fld"><label class="req">N° de OT (una por CD)</label><input type="text" data-cdf="ot" value="${esc(cd.ot)}" autocomplete="off" placeholder="Orden de trabajo de ${esc(cd.id)}"></div>
-    <div class="fld"><label>Tipo de usuario a vincular</label><div class="seg" data-seg="tipo"><button data-v="CLIENTE" class="${!unc ? 'on' : ''}">CLIENTE CON N° DE CUENTA</button><button data-v="UNC" class="${unc ? 'on' : ''}">USUARIO NO CLIENTE (UNC)</button></div></div>
+    <div class="fld"><label class="req">N° de OT</label><input type="text" data-cdf="ot" value="${esc(cd.ot)}" autocomplete="off"></div>
+    <div class="fld"><label>Tipo</label><div class="seg" data-seg="tipo"><button data-v="CLIENTE" class="${!unc ? 'on' : ''}">CLIENTE</button><button data-v="UNC" class="${unc ? 'on' : ''}">UNC</button></div></div>
     <div data-show="cli" class="${unc ? 'hidden' : ''}">
       <div class="fld"><label class="req">N° de servicio eléctrico</label><input type="text" inputmode="numeric" data-f="servicio" value="${esc(f.servicio)}" autocomplete="off"></div>
       <div class="fld"><label class="req">N° de cuenta</label><input type="text" inputmode="numeric" data-f="cuenta" value="${esc(f.cuenta)}" autocomplete="off"></div>
@@ -234,17 +231,17 @@ function viewReg(cd) {
       <div class="fld"><label class="req">Marca del medidor</label><select data-f="marca">${opts([...marcasList(), SINMED, OTRA], f.marca, 'Selecciona…')}</select></div>
       <div class="fld ${f.marca === OTRA ? '' : 'hidden'}" data-show="otra"><label class="req">Escribe la marca</label><input type="text" data-f="marcaOtra" value="${esc(f.marcaOtra)}" style="text-transform:uppercase"></div>
       <div class="fld ${f.marca === SINMED ? 'hidden' : ''}" data-show="lect"><label class="req">Lectura de energía activa (kWh)</label><input type="number" inputmode="decimal" step="any" data-f="lectura" value="${esc(f.lectura)}"><small id="lectHint"></small></div>
-      <div class="fld"><label class="req">¿Está conectado a este transformador (${esc(cd.id)})?</label><div class="seg" data-seg="pertenece"><button data-v="1" class="${f.pertenece === true ? 'on' : ''}">SÍ, es de este circuito</button><button data-v="0" class="${f.pertenece === false ? 'on no' : ''}">NO es de este circuito</button></div></div>
+      <div class="fld"><label class="req">¿Es de este circuito?</label><div class="seg" data-seg="pertenece"><button data-v="1" class="${f.pertenece === true ? 'on' : ''}">SÍ</button><button data-v="0" class="${f.pertenece === false ? 'on no' : ''}">NO</button></div></div>
     </div>
-    <div class="fld"><label>Clasificación automática</label><div id="clasif"></div></div></div>
+    <div class="fld"><label>Clasificación</label><div id="clasif"></div></div></div>
     <div class="card"><h2>Ubicación y hallazgo</h2>
     <div class="fld"><label class="req">Actividad económica</label><select data-f="actividad">${opts(ACTIVIDADES, f.actividad, 'Selecciona…')}</select></div>
-    <div class="fld"><label>Dirección${unc ? ' del usuario no cliente (opcional)' : ' (la de la ficha se conserva; escribe solo si cambia)'}</label><input type="text" data-f="direccion" value="${esc(f.direccion)}" style="text-transform:uppercase"></div>
-    <div class="fld"><label class="${unc ? 'req' : ''}">Coordenadas${unc ? ' (obligatorias para UNC)' : ' (opcional: actualizar)'}</label><div class="geo" id="geo">${geoHTML(f)}</div></div>
-    <div class="fld"><label class="req">Hallazgo técnico de pérdidas</label><select data-f="hallazgo">${opts(HALLAZGOS, f.hallazgo, 'Selecciona…')}</select></div>
-    <div class="fld"><label>Observación</label><div class="row" style="align-items:flex-start;flex-wrap:nowrap"><textarea data-f="obs" placeholder="ESCRIBE O DICTA…">${esc(f.obs)}</textarea><button type="button" class="btn mic" data-act="dictar" aria-label="Dictar">${ic('mic')}</button></div></div>
+    <div class="fld"><label>Dirección (opcional)</label><input type="text" data-f="direccion" value="${esc(f.direccion)}" style="text-transform:uppercase"></div>
+    <div class="fld"><label class="${unc ? 'req' : ''}">Coordenadas</label><div class="geo" id="geo">${geoHTML(f)}</div></div>
+    <div class="fld"><label class="req">Hallazgo de pérdidas</label><select data-f="hallazgo">${opts(HALLAZGOS, f.hallazgo, 'Selecciona…')}</select></div>
+    <div class="fld"><label>Observación</label><div class="row" style="align-items:flex-start;flex-wrap:nowrap"><textarea data-f="obs" placeholder="OBSERVACIÓN…">${esc(f.obs)}</textarea><button type="button" class="btn mic" data-act="dictar" aria-label="Dictar">${ic('mic')}</button></div></div>
     </div><div class="card"><h2>Responsable</h2>
-    <div class="fld"><label class="req">Técnico que diligencia</label><select data-f="tecnico">${opts(TECNICOS, f.tecnico, 'Selecciona…')}</select></div>
+    <div class="fld"><label>Técnico</label><input type="text" value="${esc(f.tecnico || cfg.usuario)}" readonly></div>
     <div id="errs"></div>
     <div class="row" style="margin-top:8px"><button class="btn full" data-act="cancelar" style="flex:0 0 36%">${f.id ? 'Cancelar' : 'Limpiar'}</button><button class="btn pri" id="btnSave" data-act="guardar">${f.id ? 'Guardar cambios' : 'Guardar registro'}</button></div>
     ${f.id ? '<div style="margin-top:10px"><button class="btn bad sm" data-act="borrar-reg">Eliminar este registro</button></div>' : ''}
@@ -262,7 +259,7 @@ const MAP = { z: 1, dx: 0, dy: 0, ptrs: new Map(), pts: [] };
 function viewMapa() {
   return `<canvas id="map"></canvas><div class="mapbtns"><button class="btn" data-act="mz" data-v="1.4">＋</button><button class="btn" data-act="mz" data-v="0.7">－</button><button class="btn" data-act="mc">Centrar</button><button class="btn ter" data-act="mgps">Mi ubicación</button></div>
     <div class="legend"><span><i style="background:#8a96a3"></i>Pendiente</span><span><i style="background:#12874e"></i>Del circuito</span><span><i style="background:#cf3128"></i>Fuera del circuito</span><span><i style="background:#0b78b8"></i>No en ficha</span><span><i style="background:#FF6600"></i>UNC</span><span><i style="background:#000;border-radius:2px"></i>Transformador</span></div>
-    <div id="mapInfo"></div><p style="font-size:12px;color:var(--mut)">Mapa esquemático sin fondo (funciona sin señal). Toca un punto para ver el cliente.</p>${FOOT}`;
+    <div id="mapInfo"></div>${FOOT}`;
 }
 function mapSetup() {
   const cd = curCD(), cv = $('#map'); if (!cv) return;
@@ -315,11 +312,11 @@ function viewRes(cd) {
     <div class="card"><h2>Avance</h2><div class="kpis"><div class="kpi"><b>${s.visit}/${s.total}</b><span>Ficha visitada</span></div><div class="kpi"><b>${s.pend}</b><span>Pendientes</span></div><div class="kpi"><b>${s.unc}</b><span>UNC</span></div>
     <div class="kpi"><b style="color:var(--ok)">${s.t1}</b><span>Tabla 1<br>En ficha, del circuito</span></div><div class="kpi"><b style="color:var(--bad)">${s.t2}</b><span>Tabla 2<br>En ficha, fuera</span></div><div class="kpi"><b style="color:var(--new)">${s.t3}</b><span>Tabla 3<br>No en ficha, del circuito</span></div></div>
     ${warns.map(w => `<div class="note warn">${esc(w)}</div>`).join('')}</div>
-    <div class="card"><h2>Exportar</h2><div class="row"><button class="btn pri" data-act="xlsx">Excel (3 tablas)</button><button class="btn" data-act="xlsx-share">Compartir Excel</button></div>
-    <div class="row" style="margin-top:8px"><button class="btn" data-act="json">Respaldo (.json)</button><button class="btn bad" data-act="del-cd">Eliminar CD</button></div>
-    <p style="font-size:12px;color:var(--mut)">${cd.exportadoEn ? 'Última exportación: ' + esc(stamp(new Date(cd.exportadoEn))) : 'Aún no exportado.'} Archivo: ${esc(baseName(cd))}.xlsx</p></div>
-    <div class="card"><h2>Balance de pérdidas del transformador</h2>${cd.balances.length ? `<table class="tb"><tr><th>Periodo</th><th>Entradas</th><th>Salidas</th><th>Pérdidas</th><th>Índice</th></tr>${cd.balances.map(b => `<tr><td>${esc(b.periodo)}</td><td>${fmt(b.entradas)}</td><td>${fmt(b.salidas)}</td><td>${fmt(b.perdidas)}</td><td style="color:${b.indice >= 0.2 ? 'var(--bad)' : 'inherit'};font-weight:700">${b.indice == null ? '—' : fmt(b.indice * 100, 1) + ' %'}${b.entradas === 0 ? ' ⚠' : ''}</td></tr>`).join('')}</table><p style="font-size:12px;color:var(--mut)">⚠ = periodo con entradas en 0 (dato atípico en el balance).</p>` : '<p>Sin balances en el Excel.</p>'}
-    <p style="font-size:13px">${esc(cd.meta.direccion)} · ${cd.meta.cantClientes ?? '—'} clientes según balance · ${cd.ficha.length} en la ficha</p></div>${FOOT}`;
+    <div class="card"><h2>Exportar</h2><div class="row"><button class="btn pri" data-act="xlsx">Exportar Excel</button><button class="btn" data-act="xlsx-share">Compartir</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn" data-act="json">Respaldo</button><button class="btn bad" data-act="del-cd">Eliminar CD</button></div>
+    <p style="font-size:12px;color:var(--mut)">${cd.exportadoEn ? 'Última exportación: ' + esc(stamp(new Date(cd.exportadoEn))) : 'Aún no exportado.'}</p></div>
+    <div class="card"><h2>Balance de pérdidas del transformador</h2>${cd.balances.length ? `<table class="tb"><tr><th>Periodo</th><th>Entradas</th><th>Salidas</th><th>Pérdidas</th><th>Índice</th></tr>${cd.balances.map(b => `<tr><td>${esc(b.periodo)}</td><td>${fmt(b.entradas)}</td><td>${fmt(b.salidas)}</td><td>${fmt(b.perdidas)}</td><td style="color:${b.indice >= 0.2 ? 'var(--bad)' : 'inherit'};font-weight:700">${b.indice == null ? '—' : fmt(b.indice * 100, 1) + ' %'}${b.entradas === 0 ? ' ⚠' : ''}</td></tr>`).join('')}</table>` : '<p>Sin balances en el Excel.</p>'}
+    </div>${FOOT}`;
 }
 
 // ajustes ---------------------------------------------------
@@ -349,7 +346,6 @@ function validar(cd, f, m) {
   if (!f.actividad) e.push('Actividad económica');
   if (unc) { if (f.lat == null) e.push('Capturar coordenada (obligatoria para UNC)'); }
   if (!f.hallazgo) e.push('Hallazgo técnico'); else if (f.hallazgo === HOTRO && !f.obs.trim()) e.push('Describe el hallazgo en la observación');
-  if (!f.tecnico) e.push('Técnico');
   // duplicados
   if (!f.id && !unc) {
     const dup = cd.registros.find(r => r.tipo === 'CLIENTE' && ((idn(f.servicio) && idn(r.servicio) === idn(f.servicio)) || (idn(f.cuenta) && idn(r.cuenta) === idn(f.cuenta)) || (m.i != null && matchFicha(cd, r).i === m.i)));
@@ -375,7 +371,7 @@ function updateDerived() {
   // tarjeta de coincidencia
   const mc = $('#matchCard'); if (mc) mc.innerHTML = unc ? '' : matchHTML(cd, f, m);
   // clasificación
-  const c = clasif(cd, f, m); $('#clasif').innerHTML = c == null ? '<span class="badge pend">Responde “¿es de este circuito?”</span>' : badge(CL[c].c, CL[c].t) + (c === 0 ? '<div class="note err">No se registra: no está en la ficha y no es del circuito.</div>' : '') + (unc ? '<div style="font-size:12px;color:var(--mut);margin-top:4px">Los UNC no están en ficha y se vinculan a este circuito (tabla 3, tipo UNC).</div>' : '');
+  const c = clasif(cd, f, m); $('#clasif').innerHTML = c == null ? '<span class="badge pend">Responde “¿es de este circuito?”</span>' : badge(CL[c].c, CL[c].t) + (c === 0 ? '<div class="note err">No se registra.</div>' : '');
   // lectura vs última
   const lh = $('#lectHint'); if (lh) { const fi = m.i != null ? cd.ficha[m.i] : null, v = num(f.lectura); lh.innerHTML = fi && fi.ultimaLectura != null ? `Última lectura en ficha: ${fmt(fi.ultimaLectura)} (periodo ${esc(fi.periodoUlt)})` + (v != null && v < fi.ultimaLectura ? ' <b style="color:var(--bad)">· la lectura es menor a la última: revisa</b>' : '') : ''; }
   // errores
@@ -384,7 +380,7 @@ function updateDerived() {
 }
 function matchHTML(cd, f, m) {
   if (!(f.servicio || f.cuenta || f.medidor)) return '';
-  if (m.i == null) { const o = otherCD(cd, f); return `<div class="note">No está en la ficha de ${esc(cd.id)}.${o.length ? ` <b>Aparece en la ficha de ${esc(o.join(', '))}.</b>` : ''} Si es de este circuito, se registra como “no en ficha, del circuito”.</div>`; }
+  if (m.i == null) { const o = otherCD(cd, f); return `<div class="note">No está en la ficha de ${esc(cd.id)}.${o.length ? ` <b>Aparece en la ficha de ${esc(o.join(', '))}.</b>` : ''}</div>`; }
   const x = cd.ficha[m.i], cons = Object.entries(x.cons || {}).map(([k, v]) => `${k.slice(4)}/${k.slice(2, 4)}: ${fmt(v)}`).join(' · ');
   return `<div class="note okk"><b>✓ En ficha</b> (por ${m.via.join(', ')}) · ${esc(x.direccion)}<br>Medidor ficha: ${esc(x.medidor || 'SIN MEDIDOR')} ${esc(x.marca)} · ${esc(x.clase)}${x.carga != null ? ' · carga aforada ' + x.carga : ''}${cons ? '<br>Consumos kWh: ' + cons : ''}</div>` +
     (m.conflict ? '<div class="note err">El servicio, la cuenta y el medidor escritos corresponden a clientes distintos de la ficha. Revísalos.</div>' : '') +
@@ -394,9 +390,9 @@ async function guardar() {
   const cd = curCD(), f = S.form, unc = f.tipo === 'UNC', m = unc ? { i: null } : matchFicha(cd, f), errs = validar(cd, f, m);
   if (errs.length) return toast('Falta: ' + errs[0]);
   const marca = unc ? '' : marcaFinal(f); if (marca && f.marca === OTRA && !marcasList().includes(marca)) { (cfg.marcasExtra = cfg.marcasExtra || []).push(marca); await saveCfg(); }
-  const rec = { id: f.id || uid(), tipo: f.tipo, servicio: unc ? '' : f.servicio.trim(), cuenta: unc ? '' : f.cuenta.trim(), medidor: unc || f.marca === SINMED ? '' : f.medidor.trim(), marca: unc ? '' : marca, lectura: unc || f.marca === SINMED ? null : num(f.lectura), actividad: f.actividad, pertenece: unc ? true : f.pertenece, hallazgo: f.hallazgo, obs: f.obs.trim().toUpperCase(), direccion: f.direccion.trim().toUpperCase(), lat: f.lat, lon: f.lon, prec: f.prec, capAt: f.capAt, tecnico: f.tecnico, fecha: f.fecha || stamp(), creado: f.creado || new Date().toISOString(), editado: new Date().toISOString() };
+  const rec = { id: f.id || uid(), tipo: f.tipo, servicio: unc ? '' : f.servicio.trim(), cuenta: unc ? '' : f.cuenta.trim(), medidor: unc || f.marca === SINMED ? '' : f.medidor.trim(), marca: unc ? '' : marca, lectura: unc || f.marca === SINMED ? null : num(f.lectura), actividad: f.actividad, pertenece: unc ? true : f.pertenece, hallazgo: f.hallazgo, obs: f.obs.trim().toUpperCase(), direccion: f.direccion.trim().toUpperCase(), lat: f.lat, lon: f.lon, prec: f.prec, capAt: f.capAt, tecnico: f.tecnico || cfg.usuario, fecha: f.fecha || stamp(), creado: f.creado || new Date().toISOString(), editado: new Date().toISOString() };
   const i = cd.registros.findIndex(r => r.id === rec.id); if (i >= 0) cd.registros[i] = rec; else cd.registros.push(rec);
-  cfg.ultimoTecnico = f.tecnico; await saveCfg(); await saveCD(cd);
+  await saveCD(cd);
   toast('✓ Registro guardado'); const back = S.from; S.form = newForm(unc ? 'UNC' : 'CLIENTE'); S._autoI = null; S.from = 'reg'; S.tab = back === 'lista' ? 'lista' : 'reg'; render();
 }
 function abrirFicha(i) {
@@ -440,7 +436,7 @@ function dictar() {
 async function cargarExcel(file) {
   try {
     const wb = await XLSXLite.readXlsx(await file.arrayBuffer()), cds = buildCDs(wb);
-    const box = document.createElement('div'); box.className = 'modal'; box.innerHTML = `<div class="box"><h3>Crear CD desde el Excel</h3>${cds.map(c => `<div class="card"><b>${esc(c.id)}</b> · ${esc(c.meta.circuito)}<br>${c.ficha.length} clientes · ${c.balances.length} periodos de balance · ${c.ficha.filter(f => f.lat != null).length} con coordenada${S.cds[c.id] ? '' : `<div class="fld" style="margin:8px 0 0"><label>N° de OT de este CD</label><input type="text" data-newot="${esc(c.id)}" autocomplete="off"></div>`}${S.cds[c.id] ? `<div class="note warn">Ya existe: se actualiza la ficha y se conservan sus ${S.cds[c.id].registros.length} registros.</div>` : ''}</div>`).join('')}<div class="row"><button class="btn" id="mNo">Cancelar</button><button class="btn pri" id="mSi">Aceptar</button></div></div>`;
+    const box = document.createElement('div'); box.className = 'modal'; box.innerHTML = `<div class="box"><h3>Crear CD</h3>${cds.map(c => `<div class="card"><b>${esc(c.id)}</b> · ${esc(c.meta.circuito)}<br>${c.ficha.length} clientes${S.cds[c.id] ? '' : `<div class="fld" style="margin:8px 0 0"><label>N° de OT</label><input type="text" data-newot="${esc(c.id)}" autocomplete="off"></div>`}${S.cds[c.id] ? `<div class="note warn">Ya existe: se actualiza la ficha y se conservan sus ${S.cds[c.id].registros.length} registros.</div>` : ''}</div>`).join('')}<div class="row"><button class="btn" id="mNo">Cancelar</button><button class="btn pri" id="mSi">Aceptar</button></div></div>`;
     document.body.appendChild(box); $('#mNo').onclick = () => box.remove();
     $('#mSi').onclick = async () => {
       for (const c of cds) {
@@ -449,7 +445,7 @@ async function cargarExcel(file) {
       }
       await saveCfg(); box.remove(); toast(`✓ ${cds.length} CD listo(s)`); if (cds.length === 1) { S.cur = cds[0].id; S.view = 'cd'; S.tab = 'lista'; S.form = newForm(); } render();
     };
-  } catch (e) { toast('No pude leer el Excel: ' + (e.message || e), 5000); }
+  } catch (e) { toast('No pude leer la ficha: ' + (e.message || e), 5000); }
 }
 async function cargarJSON(file) {
   try { const j = JSON.parse(await file.text()); if (j.app !== 'GS_VCT' || !j.cd || !j.cd.id) throw new Error('No es un respaldo de GS VCT'); if (S.cds[j.cd.id] && !confirm(`Ya existe el CD ${j.cd.id}. ¿Reemplazarlo con el respaldo?`)) return; S.cds[j.cd.id] = j.cd; await saveCD(j.cd); toast('✓ Respaldo restaurado'); S.view = 'home'; render(); }
@@ -469,6 +465,7 @@ document.addEventListener('click', async ev => {
     if (k === 'pertenece') { S.form.pertenece = v === '1'; sg.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b === t); b.classList.toggle('no', b === t && v === '0'); }); return updateDerived(); }
   }
   switch (t.dataset.act) {
+    case 'cambiar-usuario': cfg.usuario = ''; await saveCfg(); return render();
     case 'home': if (S.geo) geoStop(false); S.view = 'home'; S.cur = null; return render();
     case 'open-cd': S.cur = t.dataset.id; S.view = 'cd'; S.tab = 'lista'; S.q = ''; S.flt = 'todos'; S.form = newForm(); S.from = 'reg'; return render();
     case 'nuevo': S.form = newForm(); S.from = 'reg'; S._autoI = null; S.tab = 'reg'; return render();
@@ -496,8 +493,8 @@ document.addEventListener('input', ev => {
   if (['obs', 'direccion', 'marcaOtra'].includes(k)) { const p = el.selectionStart; el.value = el.value.toUpperCase(); try { el.setSelectionRange(p, p); } catch { } }
   S.form[k] = el.value; updateDerived();
 });
-document.addEventListener('change', ev => {
-  const el = ev.target; if (el.id === 'fx' && el.files[0]) { cargarExcel(el.files[0]); el.value = ''; } if (el.id === 'fj' && el.files[0]) { cargarJSON(el.files[0]); el.value = ''; }
+document.addEventListener('change', async ev => {
+  const el = ev.target; if (el.dataset.usr !== undefined && el.value) { cfg.usuario = el.value; await saveCfg(); S.form = newForm(); return render(); } if (el.id === 'fx' && el.files[0]) { cargarExcel(el.files[0]); el.value = ''; } if (el.id === 'fj' && el.files[0]) { cargarJSON(el.files[0]); el.value = ''; }
   if (el.dataset.cdf) { const cd = curCD(); cd[el.dataset.cdf] = el.value; saveCD(cd); }
 });
 document.addEventListener('pointerdown', e => { if (e.target.id === 'map') mapPointer(e, 'down'); });

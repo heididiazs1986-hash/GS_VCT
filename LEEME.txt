@@ -1,6 +1,6 @@
 GS VCT - Reporte de novedades Vínculo Cliente - Transformador
 Desarrollado por Heidi Díaz
 
-Publicar: sube estos archivos al repo (index.html, app.js, xlsx.js, sw.js, manifest.webmanifest, banner.svg, logo.png, icon-192.png, icon-512.png) y deja que Vercel publique (sin build).
+Publicar: sube estos archivos al repo (index.html, app.js, xlsx.js, sw.js, manifest.webmanifest, banner.svg, icon-192.png, icon-512.png) y deja que Vercel publique (sin build).
 Uso: Inicio > Cargar Excel del CD (hojas CLIENTES y BALANCES) > abrir el CD > registrar > Resumen > Excel (3 tablas).
-Listas fijas (técnicos, hallazgos, marcas): están en app.js; las marcas se toman del Excel. No hay pantalla de ajustes en la app.
+Listas fijas (técnicos, hallazgos, marcas): están en app.js; las marcas se toman de la ficha.
