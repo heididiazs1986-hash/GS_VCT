@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.3.2';
+const VER = '1.3.3';
 const OT_LEN = 10;
 const otOk = v => new RegExp('^\\d{' + OT_LEN + '}$').test(v || '');
 const otAtt = `inputmode="numeric" maxlength="${OT_LEN}" pattern="[0-9]*"`;
@@ -317,11 +317,21 @@ function mapPointer(ev, kind) {
 
 // resumen ---------------------------------------------------
 function setupOk(cd) { return !!(cd.placa && cd.capacidad && cd.hallazgosCD && cd.hallazgosCD.length); }
+function hzHTML(cd) {
+  const sel = cd.hallazgosCD || [], libres = HZ_CD.filter(h => !sel.includes(h));
+  return `<select data-hzadd>${opts(libres, '', sel.length ? 'Agregar otro hallazgo…' : 'Selecciona un hallazgo…')}</select>
+    <div class="chips" style="margin-top:8px">${sel.map(h => `<button class="chip on" data-act="hz" data-v="${esc(h)}">${esc(h)} ✕</button>`).join('')}</div>`;
+}
+function hzAdd(cd, v) {
+  const a = cd.hallazgosCD = cd.hallazgosCD || [], i = a.indexOf(v);
+  if (i >= 0) a.splice(i, 1); else { if (v === 'SIN HALLAZGOS') a.length = 0; else { const k = a.indexOf('SIN HALLAZGOS'); if (k >= 0) a.splice(k, 1); } a.push(v); }
+  return saveCD(cd).then(() => { const b = $('#hzbox'); if (b) b.innerHTML = hzHTML(cd); const bs = $('#btnSetup'); if (bs) bs.disabled = !setupOk(cd); });
+}
 function cdFields(cd) {
   if (!cd.capacidad && cd.meta.potencia != null && KVA.includes(String(cd.meta.potencia))) cd.capacidad = String(cd.meta.potencia);
   return `<div class="fld"><label class="req">Verificación de la placa</label><select data-cdf="placa">${opts(PLACAS, cd.placa, 'Selecciona…')}</select></div>
     <div class="fld"><label class="req">Capacidad</label><select data-cdf="capacidad">${opts(KVA, cd.capacidad, 'Selecciona…').replace(/>(\d[\d.]*)<\/option>/g, '>$1 kVA</option>')}</select></div>
-    <div class="fld"><label class="req">Hallazgos del CD</label><div class="chips">${HZ_CD.map(h => `<button class="chip${(cd.hallazgosCD || []).includes(h) ? ' on' : ''}" data-act="hz" data-v="${esc(h)}">${esc(h)}</button>`).join('')}</div></div>`;
+    <div class="fld"><label class="req">Hallazgos del CD</label><div id="hzbox">${hzHTML(cd)}</div></div>`;
 }
 function viewSetup(cd) {
   return `<div class="card"><h2>Datos del CD ${esc(cd.id)}</h2>${cdFields(cd)}<button class="btn pri full" id="btnSetup" data-act="setup-ok"${setupOk(cd) ? '' : ' disabled'}>Continuar</button></div>${FOOT}`;
@@ -531,7 +541,7 @@ document.addEventListener('click', async ev => {
     case 'mz': MAP.z = Math.min(40, Math.max(0.3, MAP.z * +t.dataset.v)); return drawMap();
     case 'mc': MAP.z = 1; MAP.dx = 0; MAP.dy = 0; return drawMap();
     case 'mgps': return mapGPS();
-    case 'hz': { const v = t.dataset.v, a = cd.hallazgosCD = cd.hallazgosCD || []; const i = a.indexOf(v); if (i >= 0) a.splice(i, 1); else { if (v === 'SIN HALLAZGOS') a.length = 0; else { const k = a.indexOf('SIN HALLAZGOS'); if (k >= 0) a.splice(k, 1); } a.push(v); } await saveCD(cd); document.querySelectorAll('[data-act="hz"]').forEach(b => b.classList.toggle('on', a.includes(b.dataset.v))); const bs = $('#btnSetup'); if (bs) bs.disabled = !setupOk(cd); return; }
+    case 'hz': return hzAdd(cd, t.dataset.v);
     case 'setup-ok': if (!setupOk(cd)) return toast('Completa placa, capacidad y hallazgos'); cd.setup = true; await saveCD(cd); S.tab = 'lista'; return render();
     case 'xlsx': return exportarExcel(cd, false);
     case 'xlsx-share': return exportarExcel(cd, true);
@@ -552,6 +562,7 @@ document.addEventListener('input', ev => {
 });
 document.addEventListener('change', async ev => {
   const el = ev.target; if (el.dataset.usr !== undefined && el.value) { cfg.usuario = el.value; await saveCfg(); S.form = newForm(); return render(); } if (el.id === 'fx' && el.files[0]) { cargarExcel(el.files[0]); el.value = ''; } if (el.id === 'fj' && el.files[0]) { cargarJSON(el.files[0]); el.value = ''; }
+  if (el.dataset.hzadd !== undefined && el.value) return hzAdd(curCD(), el.value);
   if (el.dataset.cdf) { const cd = curCD(); cd[el.dataset.cdf] = el.value; saveCD(cd); const bs = $('#btnSetup'); if (bs) bs.disabled = !setupOk(cd); }
 });
 document.addEventListener('pointerdown', e => { if (e.target.id === 'map') mapPointer(e, 'down'); });
