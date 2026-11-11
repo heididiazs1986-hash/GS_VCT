@@ -420,7 +420,7 @@ function updateDerived() {
   if (!unc) m = matchFicha(cd, f);
   if (m.i != null && S._autoI !== m.i && !m.conflict) {
     S._autoI = m.i; const fi = cd.ficha[m.i];
-    setIfEmpty('servicio', fi.servicio); setIfEmpty('cuenta', fi.cuenta); setIfEmpty('medidor', fi.medidor);
+    setIfEmpty('servicio', fi.servicio); setIfEmpty('cuenta', fi.cuenta); setIfEmpty('medidor', fi.medidor); setIfEmpty('direccion', String(fi.direccion || '').toUpperCase());
     if (!f.marca) { const mk = fi.marca; if (!fi.medidor && !mk) f.marca = SINMED; else if (mk && marcasList().includes(mk)) f.marca = mk; else if (mk) { f.marca = OTRA; f.marcaOtra = mk; } const sel = $('[data-f="marca"]'); if (sel) sel.value = f.marca; const ot = $('[data-f="marcaOtra"]'); if (ot) ot.value = f.marcaOtra; }
     if (!f.actividad) { const a = ACTIVIDADES.find(x => x === fi.clase); if (a) { f.actividad = a; const sel = $('[data-f="actividad"]'); if (sel) sel.value = a; } }
   }
