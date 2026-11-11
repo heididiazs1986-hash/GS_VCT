@@ -229,7 +229,7 @@ function listHTML(cd) {
   }).join('') + (out.length > 400 ? '<div class="note">Mostrando 400; usa el buscador para acotar.</div>' : '');
 }
 
-function newForm(tipo = 'CLIENTE') { return { id: null, tipo, servicio: '', cuenta: '', medidor: '', marca: '', marcaOtra: '', lectura: '', actividad: '', pertenece: null, hallazgo: '', obs: '', direccion: '', lat: null, lon: null, prec: null, tecnico: cfg.usuario || '', cdReal: '', otReal: '', capReal: '', material: '' }; }
+function newForm(tipo = 'CLIENTE') { return { id: null, tipo, servicio: '', cuenta: '', medidor: '', marca: '', marcaOtra: '', lectura: '', actividad: '', pertenece: null, hallazgo: tipo === 'UNC' ? '' : 'SIN HALLAZGO', obs: '', direccion: '', lat: null, lon: null, prec: null, tecnico: cfg.usuario || '', cdReal: '', otReal: '', capReal: '', material: '' }; }
 function formFromRec(r) {
   const f = Object.assign(newForm(r.tipo), JSON.parse(JSON.stringify(r)));
   const lista = [...marcasList(), SINMED]; f.marcaOtra = ''; if (f.marca && !lista.includes(f.marca)) { f.marcaOtra = f.marca; f.marca = OTRA; }
