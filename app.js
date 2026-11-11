@@ -320,7 +320,7 @@ function mapPointer(ev, kind) {
 }
 
 // resumen ---------------------------------------------------
-function setupOk(cd) { return !!(cd.placa && (cd.placa !== PLACA_NO || (cd.placaReal || '').trim()) && cd.capacidad && cd.hallazgosCD && cd.hallazgosCD.length); }
+function setupOk(cd) { return !!(otOk(cd.ot) && cd.placa && (cd.placa !== PLACA_NO || (cd.placaReal || '').trim()) && cd.capacidad && cd.hallazgosCD && cd.hallazgosCD.length); }
 function hzHTML(cd) {
   const sel = cd.hallazgosCD || [], libres = HZ_CD.filter(h => !sel.includes(h));
   return `<select data-hzadd>${opts(libres, '', sel.length ? 'Agregar otro hallazgo…' : 'Selecciona un hallazgo…')}</select>
@@ -332,6 +332,7 @@ function hzAdd(cd, v) {
   return saveCD(cd).then(() => { const b = $('#hzbox'); if (b) b.innerHTML = hzHTML(cd); const bs = $('#btnSetup'); if (bs) bs.disabled = !setupOk(cd); });
 }
 function cdFields(cd) {
+  if (!cd.setup && !(cd.hallazgosCD || []).length) cd.hallazgosCD = ['SIN HALLAZGOS'];
   if (!cd.capacidad && cd.meta.potencia != null && KVA.includes(String(cd.meta.potencia))) cd.capacidad = String(cd.meta.potencia);
   return `<div class="fld"><label class="req">Verificación de la placa</label><select data-cdf="placa">${opts(PLACAS, cd.placa, 'Selecciona…')}</select></div>
     <div class="fld${cd.placa === PLACA_NO ? '' : ' hidden'}" data-show="placaReal"><label class="req">Rótulo real del transformador</label><input type="text" data-cdf="placaReal" value="${esc(cd.placaReal || '')}" placeholder="XXXXTRX" style="text-transform:uppercase" autocomplete="off"></div>
@@ -339,7 +340,7 @@ function cdFields(cd) {
     <div class="fld"><label class="req">Hallazgos del CD</label><div id="hzbox">${hzHTML(cd)}</div></div>`;
 }
 function viewSetup(cd) {
-  return `<div class="card"><h2>Datos del CD ${esc(cd.id)}</h2>${cdFields(cd)}<button class="btn pri full" id="btnSetup" data-act="setup-ok"${setupOk(cd) ? '' : ' disabled'}>Continuar</button></div>${FOOT}`;
+  return `<div class="card"><h2>Datos del CD ${esc(cd.id)}</h2><div class="fld"><label class="req">N° de OT</label><input type="text" ${otAtt} data-cdf="ot" value="${esc(cd.ot)}" autocomplete="off"></div>${cdFields(cd)}<button class="btn pri full" id="btnSetup" data-act="setup-ok"${setupOk(cd) ? '' : ' disabled'}>Continuar</button></div>${FOOT}`;
 }
 function revisarFuera(cd) {
   const lst = cd.registros.filter(r => [0, 2].includes(clasif(cd, r)));
@@ -499,12 +500,11 @@ function dictar() {
 async function cargarExcel(file) {
   try {
     const wb = await XLSXLite.readXlsx(await file.arrayBuffer()), cds = buildCDs(wb);
-    const box = document.createElement('div'); box.className = 'modal'; box.innerHTML = `<div class="box"><h3>Crear CD</h3>${cds.map(c => `<div class="card"><b>${esc(c.id)}</b> · ${esc(c.meta.circuito)}<br>${c.ficha.length} clientes<div class="fld" style="margin:8px 0 0"><label>N° de OT</label><input type="text" ${otAtt} data-newot="${esc(c.id)}" value="${esc(cds.indexOf(c) === 0 ? S.ot0 || '' : (S.cds[c.id] ? S.cds[c.id].ot : ''))}" autocomplete="off"></div>${S.cds[c.id] ? `<div class="note warn">Ya existe: se actualiza la ficha y se conservan sus ${S.cds[c.id].registros.length} registros.</div>` : ''}</div>`).join('')}<div class="row"><button class="btn" id="mNo">Cancelar</button><button class="btn pri" id="mSi">Aceptar</button></div></div>`;
+    const box = document.createElement('div'); box.className = 'modal'; box.innerHTML = `<div class="box"><h3>Crear CD</h3>${cds.map(c => `<div class="card"><b>${esc(c.id)}</b> · ${esc(c.meta.circuito)}<br>${c.ficha.length} clientes${S.cds[c.id] ? `<div class="note warn">Ya existe: se actualiza la ficha y se conservan sus ${S.cds[c.id].registros.length} registros.</div>` : ''}</div>`).join('')}<div class="row"><button class="btn" id="mNo">Cancelar</button><button class="btn pri" id="mSi">Aceptar</button></div></div>`;
     document.body.appendChild(box); $('#mNo').onclick = () => box.remove();
     $('#mSi').onclick = async () => {
       for (const c of cds) {
-        const old = S.cds[c.id], o = document.querySelector(`[data-newot="${c.id}"]`), ot = o ? o.value.trim() : '';
-        if (!otOk(ot) && !(old && otOk(old.ot) && !ot)) return toast(`La OT debe tener ${OT_LEN} dígitos`);
+        const old = S.cds[c.id], ot = cds.indexOf(c) === 0 ? S.ot0 || '' : '';
         if (old) { old.ficha = c.ficha; old.meta = c.meta; old.balances = c.balances; if (ot) old.ot = ot; S.cds[c.id] = old; } else { c.ot = ot; S.cds[c.id] = c; }
         await saveCD(S.cds[c.id]);
       }
