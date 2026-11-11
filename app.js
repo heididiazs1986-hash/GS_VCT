@@ -1,6 +1,9 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.2.1';
+const VER = '1.2.2';
+const OT_LEN = 10;
+const otOk = v => new RegExp('^\\d{' + OT_LEN + '}$').test(v || '');
+const otAtt = `inputmode="numeric" maxlength="${OT_LEN}" pattern="[0-9]*"`;
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -183,7 +186,7 @@ function viewHome() {
   const hero = '<div class="hero"><img src="banner.svg" alt=""><div class="ttl"><b>Vínculo Cliente –<br>Transformador</b></div></div>';
   if (!cfg.usuario) return `${hero}<div class="card"><h2>Usuario</h2><select data-usr>${opts(TECNICOS, '', 'Selecciona tu nombre')}</select></div>${FOOT}`;
   const list = Object.values(S.cds).sort((a, b) => b.creado.localeCompare(a.creado));
-  return `${hero}<div class="card"><div class="fld"><label class="req">N° de OT</label><input type="text" data-ot0 value="${esc(S.ot0 || '')}" autocomplete="off"></div><button class="btn pri full" id="btnFicha" data-act="cargar"${S.ot0 ? '' : ' disabled'}>Cargar ficha</button><input type="file" id="fx" accept=".xlsx" hidden></div>
+  return `${hero}<div class="card"><div class="fld"><label class="req">N° de OT</label><input type="text" ${otAtt} data-ot0 value="${esc(S.ot0 || '')}" autocomplete="off"></div><button class="btn pri full" id="btnFicha" data-act="cargar"${otOk(S.ot0) ? '' : ' disabled'}>Cargar ficha</button><input type="file" id="fx" accept=".xlsx" hidden></div>
     ${list.map(cd => { const s = stats(cd); return `<button class="it" data-act="open-cd" data-id="${esc(cd.id)}"><div class="t"><span>${esc(cd.id)} <span style="font-weight:500;color:var(--mut)">· ${esc(cd.meta.circuito)}</span></span><span class="badge ${s.pend === 0 && s.total ? 'ok' : 'pend'}">${s.visit}/${s.total}</span></div><div class="s">${s.n} registros${cd.ot ? ' · OT ' + esc(cd.ot) : ''}${cd.exportadoEn ? '' : ' · sin exportar'}</div></button>`; }).join('')}
     <div style="text-align:center;margin-top:10px"><label class="btn sm"><input type="file" id="fj" accept=".json" hidden>Restaurar respaldo</label></div>${FOOT}`;
 }
@@ -206,7 +209,7 @@ function listHTML(cd) {
   if (!out.length) return '<div class="note">No hay resultados.</div>';
   return out.slice(0, 400).map(it => {
     const x = it.f || it.r, c = it.r ? clasif(cd, it.r) : null;
-    const chip = it.r ? (it.r.tipo === 'UNC' ? badge('unc', 'UNC') : badge(CL[c] ? CL[c].c : 'none', c === 1 ? 'Del circuito ✓' : c === 2 ? (it.r.otReal ? 'Fuera del circuito' : 'Fuera · pedir OT') : c === 3 ? 'No en ficha' : 'Sin clasificar')) : badge('pend', 'Pendiente');
+    const chip = it.r ? (it.r.tipo === 'UNC' ? badge('unc', 'UNC') : badge(CL[c] ? CL[c].c : 'none', c === 1 ? 'Del circuito ✓' : c === 2 ? (otOk(it.r.otReal) ? 'Fuera del circuito' : 'Fuera · pedir OT') : c === 3 ? 'No en ficha' : 'Sin clasificar')) : badge('pend', 'Pendiente');
     const title = it.r && it.r.tipo === 'UNC' ? 'Usuario no cliente' : `Serv. ${esc(x.servicio || '—')} · Cta. ${esc(x.cuenta || '—')}`;
     const dir = x.direccion || (it.r && it.r.direccion) || '';
     const extra = it.f && (it.f.cosecha || !it.f.medidor) ? ` · <span style="color:var(--warn)">${esc(it.f.cosecha || 'Sin medidor en ficha')}</span>` : '';
@@ -223,7 +226,7 @@ function formFromRec(r) {
 function viewReg(cd) {
   const f = S.form || (S.form = newForm()), unc = f.tipo === 'UNC';
   return `<div class="card"><h2>Usuario</h2>
-    <div class="fld"><label class="req">N° de OT</label><input type="text" data-cdf="ot" value="${esc(cd.ot)}" autocomplete="off"></div>
+    <div class="fld"><label class="req">N° de OT</label><input type="text" ${otAtt} data-cdf="ot" value="${esc(cd.ot)}" autocomplete="off"></div>
     <div class="fld"><label>Tipo</label><div class="seg" data-seg="tipo"><button data-v="CLIENTE" class="${!unc ? 'on' : ''}">CLIENTE</button><button data-v="UNC" class="${unc ? 'on' : ''}">UNC</button></div></div>
     <div data-show="cli" class="${unc ? 'hidden' : ''}">
       <div class="fld"><label class="req">N° de servicio eléctrico</label><input type="text" inputmode="numeric" data-f="servicio" value="${esc(f.servicio)}" autocomplete="off"></div>
@@ -238,7 +241,7 @@ function viewReg(cd) {
     <div class="fld"><label>Clasificación</label><div id="clasif"></div></div>
     <div data-show="otro" class="hidden"><div class="note warn">Es de otro CD: pide una OT para ese CD.</div>
       <div class="fld" style="margin-top:12px"><label>CD correcto</label><input type="text" data-f="cdReal" value="${esc(f.cdReal)}" placeholder="XXXXTRX" style="text-transform:uppercase" autocomplete="off"></div>
-      <div class="fld"><label>OT del CD correcto</label><input type="text" data-f="otReal" value="${esc(f.otReal)}" autocomplete="off"></div></div></div>
+      <div class="fld"><label>OT del CD correcto</label><input type="text" ${otAtt} data-f="otReal" value="${esc(f.otReal)}" autocomplete="off"></div></div></div>
     <div class="card"><h2>Ubicación y hallazgo</h2>
     <div class="fld"><label class="req">Actividad económica</label><select data-f="actividad">${opts(ACTIVIDADES, f.actividad, 'Selecciona…')}</select></div>
     <div class="fld"><label>Dirección (opcional)</label><input type="text" data-f="direccion" value="${esc(f.direccion)}" style="text-transform:uppercase"></div>
@@ -308,12 +311,12 @@ function mapPointer(ev, kind) {
 // resumen ---------------------------------------------------
 function viewRes(cd) {
   const s = stats(cd), warns = [];
-  if (!cd.ot) warns.push('Falta el N° de orden de trabajo (OT).'); if (!cd.placa) warns.push('Falta la verificación de la placa del transformador.');
-  const sinOT = cd.registros.filter(r => clasif(cd, r) === 2 && !r.otReal).length; if (sinOT) warns.push(`${sinOT} cliente(s) son de otro CD: falta la OT de ese CD.`);
+  if (!otOk(cd.ot)) warns.push(`La OT del CD debe tener ${OT_LEN} dígitos.`); if (!cd.placa) warns.push('Falta la verificación de la placa del transformador.');
+  const sinOT = cd.registros.filter(r => clasif(cd, r) === 2 && !otOk(r.otReal)).length; if (sinOT) warns.push(`${sinOT} cliente(s) son de otro CD: falta la OT de ese CD.`);
   if (s.pend) warns.push(`Quedan ${s.pend} clientes de la ficha sin registrar.`); if (s.inv) warns.push(`${s.inv} registro(s) no se exportan (no están en ficha ni son del circuito).`);
   return `<div class="card"><h2>Datos de la visita</h2>
     <div class="fld"><label>Rótulo del transformador (CD)</label><input type="text" value="${esc(cd.id)}" readonly></div>
-    <div class="fld"><label class="req">N° de orden de trabajo (OT)</label><input type="text" data-cdf="ot" value="${esc(cd.ot)}" autocomplete="off"></div>
+    <div class="fld"><label class="req">N° de orden de trabajo (OT)</label><input type="text" ${otAtt} data-cdf="ot" value="${esc(cd.ot)}" autocomplete="off"></div>
     <div class="fld"><label class="req">Verificación de la placa</label><select data-cdf="placa">${opts(PLACAS, cd.placa, 'Selecciona…')}</select></div></div>
     <div class="card"><h2>Avance</h2><div class="kpis"><div class="kpi"><b>${s.visit}/${s.total}</b><span>Ficha visitada</span></div><div class="kpi"><b>${s.pend}</b><span>Pendientes</span></div><div class="kpi"><b>${s.unc}</b><span>UNC</span></div>
     <div class="kpi"><b style="color:var(--ok)">${s.t1}</b><span>Tabla 1<br>En ficha, del circuito</span></div><div class="kpi"><b style="color:var(--bad)">${s.t2}</b><span>Tabla 2<br>En ficha, fuera</span></div><div class="kpi"><b style="color:var(--new)">${s.t3}</b><span>Tabla 3<br>No en ficha, del circuito</span></div></div>
@@ -342,12 +345,13 @@ function render() {
 function marcaFinal(f) { return f.marca === OTRA ? f.marcaOtra.trim().toUpperCase() : f.marca; }
 function validar(cd, f, m) {
   const e = [], unc = f.tipo === 'UNC';
-  if (!cd.ot) e.push('N° de OT del CD');
+  if (!otOk(cd.ot)) e.push(`OT del CD (${OT_LEN} dígitos)`);
   if (!unc) {
     if (!f.servicio.trim()) e.push('N° de servicio'); if (!f.cuenta.trim()) e.push('N° de cuenta');
     if (!f.marca) e.push('Marca del medidor'); else if (f.marca === OTRA && !f.marcaOtra.trim()) e.push('Escribe la marca');
     if (f.marca !== SINMED) { if (!f.medidor.trim()) e.push('N° de medidor'); if (f.lectura === '' || num(f.lectura) == null) e.push('Lectura de energía activa'); }
     if (f.pertenece == null) e.push('¿Es de este circuito? (SÍ / NO)');
+    if (m.i != null && f.pertenece === false && f.otReal && !otOk(f.otReal)) e.push(`OT del CD correcto (${OT_LEN} dígitos)`);
     if (m.i == null && f.pertenece === false) e.push('No está en la ficha ni es del circuito: no se registra');
   }
   if (!f.actividad) e.push('Actividad económica');
@@ -444,11 +448,12 @@ function dictar() {
 async function cargarExcel(file) {
   try {
     const wb = await XLSXLite.readXlsx(await file.arrayBuffer()), cds = buildCDs(wb);
-    const box = document.createElement('div'); box.className = 'modal'; box.innerHTML = `<div class="box"><h3>Crear CD</h3>${cds.map(c => `<div class="card"><b>${esc(c.id)}</b> · ${esc(c.meta.circuito)}<br>${c.ficha.length} clientes<div class="fld" style="margin:8px 0 0"><label>N° de OT</label><input type="text" data-newot="${esc(c.id)}" value="${esc(cds.indexOf(c) === 0 ? S.ot0 || '' : (S.cds[c.id] ? S.cds[c.id].ot : ''))}" autocomplete="off"></div>${S.cds[c.id] ? `<div class="note warn">Ya existe: se actualiza la ficha y se conservan sus ${S.cds[c.id].registros.length} registros.</div>` : ''}</div>`).join('')}<div class="row"><button class="btn" id="mNo">Cancelar</button><button class="btn pri" id="mSi">Aceptar</button></div></div>`;
+    const box = document.createElement('div'); box.className = 'modal'; box.innerHTML = `<div class="box"><h3>Crear CD</h3>${cds.map(c => `<div class="card"><b>${esc(c.id)}</b> · ${esc(c.meta.circuito)}<br>${c.ficha.length} clientes<div class="fld" style="margin:8px 0 0"><label>N° de OT</label><input type="text" ${otAtt} data-newot="${esc(c.id)}" value="${esc(cds.indexOf(c) === 0 ? S.ot0 || '' : (S.cds[c.id] ? S.cds[c.id].ot : ''))}" autocomplete="off"></div>${S.cds[c.id] ? `<div class="note warn">Ya existe: se actualiza la ficha y se conservan sus ${S.cds[c.id].registros.length} registros.</div>` : ''}</div>`).join('')}<div class="row"><button class="btn" id="mNo">Cancelar</button><button class="btn pri" id="mSi">Aceptar</button></div></div>`;
     document.body.appendChild(box); $('#mNo').onclick = () => box.remove();
     $('#mSi').onclick = async () => {
       for (const c of cds) {
         const old = S.cds[c.id], o = document.querySelector(`[data-newot="${c.id}"]`), ot = o ? o.value.trim() : '';
+        if (!otOk(ot) && !(old && otOk(old.ot) && !ot)) return toast(`La OT debe tener ${OT_LEN} dígitos`);
         if (old) { old.ficha = c.ficha; old.meta = c.meta; old.balances = c.balances; if (ot) old.ot = ot; S.cds[c.id] = old; } else { c.ot = ot; S.cds[c.id] = c; }
         await saveCD(S.cds[c.id]);
       }
@@ -475,7 +480,7 @@ document.addEventListener('click', async ev => {
   }
   switch (t.dataset.act) {
     case 'cambiar-usuario': cfg.usuario = ''; await saveCfg(); return render();
-    case 'cargar': if (!S.ot0) return toast('Escribe primero la OT'); return $('#fx').click();
+    case 'cargar': if (!otOk(S.ot0)) return toast(`La OT debe tener ${OT_LEN} dígitos`); return $('#fx').click();
     case 'home': if (S.geo) geoStop(false); S.view = 'home'; S.cur = null; return render();
     case 'open-cd': S.cur = t.dataset.id; S.view = 'cd'; S.tab = 'lista'; S.q = ''; S.flt = 'todos'; S.form = newForm(); S.from = 'reg'; return render();
     case 'nuevo': S.form = newForm(); S.from = 'reg'; S._autoI = null; S.tab = 'reg'; return render();
@@ -497,10 +502,12 @@ document.addEventListener('click', async ev => {
 });
 document.addEventListener('input', ev => {
   const el = ev.target, cd = curCD();
-  if (el.dataset.ot0 !== undefined) { S.ot0 = el.value.trim(); const b = $('#btnFicha'); if (b) b.disabled = !S.ot0; return; }
+  if (el.dataset.ot0 !== undefined) { el.value = el.value.replace(/\D/g, '').slice(0, OT_LEN); S.ot0 = el.value; const b = $('#btnFicha'); if (b) b.disabled = !otOk(S.ot0); return; }
+  if (el.dataset.newot !== undefined) { el.value = el.value.replace(/\D/g, '').slice(0, OT_LEN); return; }
   if (el.id === 'q') { S.q = el.value; $('#lst').innerHTML = listHTML(cd); return; }
-  if (el.dataset.cdf) { cd[el.dataset.cdf] = el.value.trim(); saveCD(cd); if (S.tab === 'reg') updateDerived(); return; }
+  if (el.dataset.cdf) { if (el.dataset.cdf === 'ot') el.value = el.value.replace(/\D/g, '').slice(0, OT_LEN); cd[el.dataset.cdf] = el.value.trim(); saveCD(cd); if (S.tab === 'reg') updateDerived(); return; }
   const k = el.dataset.f; if (!k || !S.form) return;
+  if (k === 'otReal') el.value = el.value.replace(/\D/g, '').slice(0, OT_LEN);
   if (['obs', 'direccion', 'marcaOtra', 'cdReal', 'otReal'].includes(k)) { const p = el.selectionStart; el.value = el.value.toUpperCase(); try { el.setSelectionRange(p, p); } catch { } }
   S.form[k] = el.value; updateDerived();
 });
