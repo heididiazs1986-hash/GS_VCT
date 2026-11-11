@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.7.2';
+const VER = '1.7.6';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -222,7 +222,7 @@ function balanceHTML(cd) {
 function viewLista(cd) {
   const s = stats(cd), fl = S.flt;
   const fuera = cd.registros.filter(r => r.tipo === 'UNC' || matchFicha(cd, r).i == null).length;
-  const ch = [['todos', 'Todos ' + (s.total + fuera)], ['pend', 'Pendientes ' + s.pend], ['reg', 'Registrados ' + s.n], ['fuera', 'Fuera de ficha ' + fuera]];
+  const ch = [['todos', 'Todos ' + (s.pend + fuera)], ['pend', 'Pendientes ' + s.pend], ['reg', 'Registrados ' + s.n], ['fuera', 'Fuera de ficha ' + fuera]];
   return balanceHTML(cd) + `<div class="row" style="margin-bottom:6px"><input type="search" id="q" placeholder="Buscar servicio, cuenta, medidor…" value="${esc(S.q)}"></div>
     <div class="chips">${ch.map(([k, l]) => `<button class="chip ${fl === k ? 'on' : ''}" data-flt="${k}">${l}</button>`).join('')}</div>
     <div id="lst">${listHTML(cd)}</div>${FOOT}`;
@@ -232,17 +232,24 @@ function listHTML(cd) {
   cd.ficha.forEach((f, i) => items.push({ f, i, r: s.reg.get(i) }));
   cd.registros.forEach(r => { if (r.tipo === 'UNC' || matchFicha(cd, r).i == null) items.push({ r, extra: true }); });
   const out = items.filter(it => {
-    if (S.flt === 'pend' && (it.extra || it.r)) return false; if (S.flt === 'reg' && !it.r) return false; if (S.flt === 'fuera' && !it.extra) return false;
+    if (S.flt === 'todos' && !it.extra && it.r) return false; if (S.flt === 'pend' && (it.extra || it.r)) return false; if (S.flt === 'reg' && !it.r) return false; if (S.flt === 'fuera' && !it.extra) return false;
     if (!q) return true; const x = it.f || it.r; return [x.servicio, x.cuenta, x.medidor, x.direccion, it.r && it.r.direccion].some(v => String(v || '').toLowerCase().includes(q));
   });
   if (!out.length) return '<div class="note">No hay resultados.</div>';
   return out.slice(0, 400).map(it => {
     const x = it.f || it.r, c = it.r ? clasif(cd, it.r) : null;
     const chip = it.r ? (it.r.tipo === 'UNC' ? badge('unc', 'UNC') : badge(CL[c] ? CL[c].c : 'none', c === 1 ? 'Del circuito ✓' : c === 2 || c === 0 ? (otOk(it.r.otReal) ? 'Otro circuito ✓' : 'Otro circuito · falta OT') : c === 3 ? 'No en ficha' : 'Sin clasificar')) : badge('pend', 'Pendiente');
-    const title = it.r && it.r.tipo === 'UNC' ? 'Usuario no cliente' : `Serv. ${esc(x.servicio || '—')} · Cta. ${esc(x.cuenta || '—')} · Med. ${esc(x.medidor || '—')}`;
-    const dir = x.direccion || (it.r && it.r.direccion) || '';
-    const extra = it.f && (it.f.cosecha || !it.f.medidor) ? ` · <span style="color:var(--warn)">${esc(it.f.cosecha || 'Sin medidor en ficha')}</span>` : '';
-    return `<button class="it" ${it.extra ? `data-act="open-reg" data-id="${esc(it.r.id)}"` : `data-act="open-ficha" data-i="${it.i}"`}><div class="t"><span>${title}</span>${chip}</div><div class="s">${esc(dir) || 'Sin dirección'}</div>${[x.marca ? esc(x.marca) : '', extra ? extra.replace(/^ · /, '') : '', it.r && it.r.hallazgo && it.r.hallazgo !== 'SIN HALLAZGO' ? '⚠ ' + esc(it.r.hallazgo) : ''].filter(Boolean).length ? `<div class="s">${[x.marca ? esc(x.marca) : '', extra ? extra.replace(/^ · /, '') : '', it.r && it.r.hallazgo && it.r.hallazgo !== 'SIN HALLAZGO' ? '⚠ ' + esc(it.r.hallazgo) : ''].filter(Boolean).join(' · ')}</div>` : ''}</button>`;
+    const unc = it.r && it.r.tipo === 'UNC', rr = it.r || {};
+    const med = rr.medidor || x.medidor, marca = rr.marca || x.marca;
+    const title = unc ? 'Usuario no cliente' : `Med. ${esc(med || '—')}`;
+    const dir = x.direccion || rr.direccion || '';
+    const extra = it.f && (it.f.cosecha || !it.f.medidor) ? `<span style="color:var(--warn)">${esc(it.f.cosecha || 'Sin medidor en ficha')}</span>` : '';
+    const hz = rr.hallazgo && rr.hallazgo !== 'SIN HALLAZGO' ? '⚠ ' + esc(rr.hallazgo) : '';
+    const clase = it.f && it.f.clase ? it.f.clase.charAt(0) + it.f.clase.slice(1).toLowerCase() : '';
+    const l1 = unc ? '' : [marca ? esc(marca) : '', clase ? esc(clase) : '', extra, hz].filter(Boolean).join(' · ');
+    const l2 = unc ? hz : `Serv. ${esc(x.servicio || '—')} · Cta. ${esc(x.cuenta || '—')}`;
+    const key = it.extra ? 'r' + it.r.id : 'f' + it.i;
+    return `<button class="it${S.hl === key ? ' sel' : ''}" ${it.extra ? `data-act="open-reg" data-id="${esc(it.r.id)}"` : `data-act="open-ficha" data-i="${it.i}"`}><div class="t"><span>${title}</span>${chip}</div>${l1 ? `<div class="s">${l1}</div>` : ''}${l2 ? `<div class="s">${l2}</div>` : ''}<div class="s">${esc(dir) || 'Sin dirección'}</div></button>`;
   }).join('') + (out.length > 400 ? '<div class="note">Mostrando 400; usa el buscador para acotar.</div>' : '');
 }
 
@@ -367,6 +374,7 @@ function render() {
   $('#root').innerHTML = header() + `<main${cambio ? ' class="enter"' : ''}>${body}</main>` + nav();
   if (S.view === 'cd' && S.tab === 'reg') { updateDerived(); }
   window.scrollTo(0, 0);
+  if (S.view === 'cd' && S.tab === 'lista') { const el = $('.it.sel'); if (el) el.scrollIntoView({ block: 'center' }); }
 }
 
 // ---------- formulario de registro ----------
@@ -424,7 +432,7 @@ function matchHTML(cd, f, m) {
   if (!(f.servicio || f.cuenta || f.medidor)) return '';
   if (m.i == null) { const o = otherCD(cd, f); return `<div class="note">No está en la ficha de ${esc(cd.id)}.${o.length ? ` <b>Aparece en la ficha de ${esc(o.join(', '))}.</b>` : ''}</div>`; }
   const x = cd.ficha[m.i], cons = Object.entries(x.cons || {}).sort((p, q) => p[0].localeCompare(q[0])).map(([k, v]) => `<div class="c"><em>${k.slice(4)}/${k.slice(2, 4)}</em><b>${fmt(v)}</b></div>`).join('');
-  return `<div class="fx"><div class="fxh"><span class="fxok">✓ En ficha</span>${x.carga != null ? `<span class="fxc">Carga aforada <b>${x.carga}</b></span>` : ''}</div>${cons ? `<div class="fxl">Consumos (kWh)</div><div class="cons">${cons}</div>` : ''}</div>` +
+  return `<div class="fx"><div class="fxh"><span class="fxok">✓ En ficha</span>${x.clase ? `<span class="fxc">Clase de servicio <b>${esc(x.clase)}</b></span>` : ''}${x.carga != null ? `<span class="fxc">Carga aforada <b>${x.carga}</b></span>` : ''}</div>${cons ? `<div class="fxl">Consumos (kWh)</div><div class="cons">${cons}</div>` : ''}</div>` +
     (m.conflict ? '<div class="note err">El servicio, la cuenta y el medidor escritos corresponden a clientes distintos de la ficha. Revísalos.</div>' : '') +
     (x.cosecha ? `<div class="note warn">Control en ficha: ${esc(x.cosecha)}</div>` : '') + (x.reinc ? `<div class="note warn">Reincidencias: ${x.reinc}${x.imputada ? ' · energía imputada ' + fmt(x.imputada) + ' kWh' : ''}</div>` : '') + (!x.medidor ? '<div class="note warn">La ficha no tiene medidor para este cliente.</div>' : '');
 }
@@ -516,8 +524,8 @@ document.addEventListener('click', async ev => {
     case 'home': if (S.geo) geoStop(false); S.view = 'home'; S.cur = null; return render();
     case 'open-cd': S.cur = t.dataset.id; S.view = 'cd'; S.tab = 'lista'; S.q = ''; S.flt = 'todos'; S.form = newForm(); S.from = 'reg'; return render();
     case 'nuevo': S.form = newForm(); S.from = 'reg'; S._autoI = null; S.tab = 'reg'; return render();
-    case 'open-ficha': return abrirFicha(+t.dataset.i);
-    case 'open-reg': return abrirReg(t.dataset.id);
+    case 'open-ficha': S.hl = 'f' + t.dataset.i; return abrirFicha(+t.dataset.i);
+    case 'open-reg': S.hl = 'r' + t.dataset.id; return abrirReg(t.dataset.id);
     case 'cancelar': if (S.geo) geoStop(false); S.form = newForm(S.form.tipo); S._autoI = null; if (S.from === 'lista') { S.tab = 'lista'; S.from = 'reg'; } return render();
     case 'guardar': return guardar();
     case 'borrar-reg': if (confirm('¿Eliminar este registro?')) { cd.registros = cd.registros.filter(r => r.id !== S.form.id); await saveCD(cd); S.form = newForm(); S.tab = 'lista'; toast('Registro eliminado'); render(); } return;
