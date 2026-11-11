@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.1.1';
+const VER = '1.2.0';
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -116,15 +116,15 @@ function clasif(cd, r, m) {
 }
 
 // ---------- exportación: Excel con 3 tablas ----------
-const COLS = ['ID_REGISTRO', 'CD', 'OT', 'FECHA_HORA', 'TECNICO', 'TIPO_USUARIO', 'CLASIFICACION', 'NRO_SERVICIO', 'NRO_CUENTA', 'NRO_MEDIDOR', 'MARCA_MEDIDOR', 'LECTURA_ENERGIA_ACTIVA', 'ACTIVIDAD_ECONOMICA', 'DIRECCION', 'LATITUD', 'LONGITUD', 'PRECISION_M', 'FECHA_CAPTURA_COORD', 'HALLAZGO_PERDIDAS', 'OBSERVACION', 'PLACA_TRANSFORMADOR', 'FICHA_MEDIDOR', 'FICHA_MARCA', 'DIFIERE_MEDIDOR'];
-const WIDTHS = [14, 11, 14, 19, 22, 13, 30, 14, 12, 14, 14, 12, 16, 34, 12, 12, 10, 19, 40, 40, 40, 14, 14, 10];
+const COLS = ['ID_REGISTRO', 'CD', 'OT', 'FECHA_HORA', 'TECNICO', 'TIPO_USUARIO', 'CLASIFICACION', 'NRO_SERVICIO', 'NRO_CUENTA', 'NRO_MEDIDOR', 'MARCA_MEDIDOR', 'LECTURA_ENERGIA_ACTIVA', 'ACTIVIDAD_ECONOMICA', 'DIRECCION', 'LATITUD', 'LONGITUD', 'PRECISION_M', 'FECHA_CAPTURA_COORD', 'HALLAZGO_PERDIDAS', 'OBSERVACION', 'PLACA_TRANSFORMADOR', 'CD_CORRECTO', 'OT_CD_CORRECTO', 'FICHA_MEDIDOR', 'FICHA_MARCA', 'DIFIERE_MEDIDOR'];
+const WIDTHS = [14, 11, 14, 19, 22, 13, 30, 14, 12, 14, 14, 12, 16, 34, 12, 12, 10, 19, 40, 40, 40, 14, 14, 14, 14, 10];
 function buildSheets(cd) {
   const rows = { 1: [], 2: [], 3: [] };
   [...cd.registros].sort((a, b) => a.creado.localeCompare(b.creado)).forEach(r => {
     const m = r.tipo === 'CLIENTE' ? matchFicha(cd, r) : { i: null }, c = clasif(cd, r, m); if (!c) return;
     const f = m.i != null ? cd.ficha[m.i] : null;
     const dif = f && f.medidor && r.medidor && idn(f.medidor) !== idn(r.medidor) ? 'SI' : (f ? 'NO' : '');
-    rows[c].push([r.id, cd.id, cd.ot || '', r.fecha || '', r.tecnico || '', r.tipo === 'UNC' ? 'UNC' : 'CLIENTE', CL[c].t, r.servicio || '', r.cuenta || '', r.medidor || '', r.marca || '', num(r.lectura), r.actividad || '', r.direccion || (f ? f.direccion : ''), r.lat, r.lon, r.prec == null ? null : Math.round(r.prec * 10) / 10, r.capAt ? stamp(new Date(r.capAt)) : '', r.hallazgo || '', r.obs || '', cd.placa || '', f ? f.medidor : '', f ? f.marca : '', dif]);
+    rows[c].push([r.id, cd.id, cd.ot || '', r.fecha || '', r.tecnico || '', r.tipo === 'UNC' ? 'UNC' : 'CLIENTE', CL[c].t, r.servicio || '', r.cuenta || '', r.medidor || '', r.marca || '', num(r.lectura), r.actividad || '', r.direccion || (f ? f.direccion : ''), r.lat, r.lon, r.prec == null ? null : Math.round(r.prec * 10) / 10, r.capAt ? stamp(new Date(r.capAt)) : '', r.hallazgo || '', r.obs || '', cd.placa || '', c === 2 ? r.cdReal || '' : '', c === 2 ? r.otReal || '' : '', f ? f.medidor : '', f ? f.marca : '', dif]);
   });
   return [
     { name: '1_EN_FICHA_DEL_CIRCUITO', table: 'tblEnFichaDelCircuito', columns: COLS, rows: rows[1], widths: WIDTHS },
@@ -183,7 +183,7 @@ function viewHome() {
   const hero = '<div class="hero"><img src="banner.svg" alt=""><div class="ttl"><b>Vínculo Cliente –<br>Transformador</b></div></div>';
   if (!cfg.usuario) return `${hero}<div class="card"><h2>Usuario</h2><select data-usr>${opts(TECNICOS, '', 'Selecciona tu nombre')}</select></div>${FOOT}`;
   const list = Object.values(S.cds).sort((a, b) => b.creado.localeCompare(a.creado));
-  return `${hero}<label class="btn pri full" style="margin-bottom:14px"><input type="file" id="fx" accept=".xlsx" hidden>Cargar ficha</label>
+  return `${hero}<div class="card"><div class="fld"><label class="req">N° de OT</label><input type="text" data-ot0 value="${esc(S.ot0 || '')}" autocomplete="off"></div><button class="btn pri full" id="btnFicha" data-act="cargar"${S.ot0 ? '' : ' disabled'}>Cargar ficha</button><input type="file" id="fx" accept=".xlsx" hidden></div>
     ${list.map(cd => { const s = stats(cd); return `<button class="it" data-act="open-cd" data-id="${esc(cd.id)}"><div class="t"><span>${esc(cd.id)} <span style="font-weight:500;color:var(--mut)">· ${esc(cd.meta.circuito)}</span></span><span class="badge ${s.pend === 0 && s.total ? 'ok' : 'pend'}">${s.visit}/${s.total}</span></div><div class="s">${s.n} registros${cd.ot ? ' · OT ' + esc(cd.ot) : ''}${cd.exportadoEn ? '' : ' · sin exportar'}</div></button>`; }).join('')}
     <div style="text-align:center;margin-top:10px"><label class="btn sm"><input type="file" id="fj" accept=".json" hidden>Restaurar respaldo</label></div>${FOOT}`;
 }
@@ -206,7 +206,7 @@ function listHTML(cd) {
   if (!out.length) return '<div class="note">No hay resultados.</div>';
   return out.slice(0, 400).map(it => {
     const x = it.f || it.r, c = it.r ? clasif(cd, it.r) : null;
-    const chip = it.r ? (it.r.tipo === 'UNC' ? badge('unc', 'UNC') : badge(CL[c] ? CL[c].c : 'none', c === 1 ? 'Del circuito ✓' : c === 2 ? 'Fuera del circuito' : c === 3 ? 'No en ficha' : 'Sin clasificar')) : badge('pend', 'Pendiente');
+    const chip = it.r ? (it.r.tipo === 'UNC' ? badge('unc', 'UNC') : badge(CL[c] ? CL[c].c : 'none', c === 1 ? 'Del circuito ✓' : c === 2 ? (it.r.otReal ? 'Fuera del circuito' : 'Fuera · pedir OT') : c === 3 ? 'No en ficha' : 'Sin clasificar')) : badge('pend', 'Pendiente');
     const title = it.r && it.r.tipo === 'UNC' ? 'Usuario no cliente' : `Serv. ${esc(x.servicio || '—')} · Cta. ${esc(x.cuenta || '—')}`;
     const dir = x.direccion || (it.r && it.r.direccion) || '';
     const extra = it.f && (it.f.cosecha || !it.f.medidor) ? ` · <span style="color:var(--warn)">${esc(it.f.cosecha || 'Sin medidor en ficha')}</span>` : '';
@@ -214,7 +214,7 @@ function listHTML(cd) {
   }).join('') + (out.length > 400 ? '<div class="note">Mostrando 400; usa el buscador para acotar.</div>' : '');
 }
 
-function newForm(tipo = 'CLIENTE') { return { id: null, tipo, servicio: '', cuenta: '', medidor: '', marca: '', marcaOtra: '', lectura: '', actividad: '', pertenece: null, hallazgo: '', obs: '', direccion: '', lat: null, lon: null, prec: null, capAt: null, tecnico: cfg.usuario || '' }; }
+function newForm(tipo = 'CLIENTE') { return { id: null, tipo, servicio: '', cuenta: '', medidor: '', marca: '', marcaOtra: '', lectura: '', actividad: '', pertenece: null, hallazgo: '', obs: '', direccion: '', lat: null, lon: null, prec: null, capAt: null, tecnico: cfg.usuario || '', cdReal: '', otReal: '' }; }
 function formFromRec(r) {
   const f = Object.assign(newForm(r.tipo), JSON.parse(JSON.stringify(r)));
   const lista = [...marcasList(), SINMED]; f.marcaOtra = ''; if (f.marca && !lista.includes(f.marca)) { f.marcaOtra = f.marca; f.marca = OTRA; }
@@ -235,7 +235,10 @@ function viewReg(cd) {
       <div class="fld ${f.marca === SINMED ? 'hidden' : ''}" data-show="lect"><label class="req">Lectura de energía activa (kWh)</label><input type="number" inputmode="decimal" step="any" data-f="lectura" value="${esc(f.lectura)}"><small id="lectHint"></small></div>
       <div class="fld"><label class="req">¿Es de este circuito?</label><div class="seg" data-seg="pertenece"><button data-v="1" class="${f.pertenece === true ? 'on' : ''}">SÍ</button><button data-v="0" class="${f.pertenece === false ? 'on no' : ''}">NO</button></div></div>
     </div>
-    <div class="fld"><label>Clasificación</label><div id="clasif"></div></div></div>
+    <div class="fld"><label>Clasificación</label><div id="clasif"></div></div>
+    <div data-show="otro" class="hidden"><div class="note warn">Es de otro CD: pide una OT para ese CD.</div>
+      <div class="fld" style="margin-top:12px"><label>CD correcto</label><input type="text" data-f="cdReal" value="${esc(f.cdReal)}" placeholder="XXXXTRX" style="text-transform:uppercase" autocomplete="off"></div>
+      <div class="fld"><label>OT del CD correcto</label><input type="text" data-f="otReal" value="${esc(f.otReal)}" autocomplete="off"></div></div></div>
     <div class="card"><h2>Ubicación y hallazgo</h2>
     <div class="fld"><label class="req">Actividad económica</label><select data-f="actividad">${opts(ACTIVIDADES, f.actividad, 'Selecciona…')}</select></div>
     <div class="fld"><label>Dirección (opcional)</label><input type="text" data-f="direccion" value="${esc(f.direccion)}" style="text-transform:uppercase"></div>
@@ -306,6 +309,7 @@ function mapPointer(ev, kind) {
 function viewRes(cd) {
   const s = stats(cd), warns = [];
   if (!cd.ot) warns.push('Falta el N° de orden de trabajo (OT).'); if (!cd.placa) warns.push('Falta la verificación de la placa del transformador.');
+  const sinOT = cd.registros.filter(r => clasif(cd, r) === 2 && !r.otReal).length; if (sinOT) warns.push(`${sinOT} cliente(s) son de otro CD: falta la OT de ese CD.`);
   if (s.pend) warns.push(`Quedan ${s.pend} clientes de la ficha sin registrar.`); if (s.inv) warns.push(`${s.inv} registro(s) no se exportan (no están en ficha ni son del circuito).`);
   return `<div class="card"><h2>Datos de la visita</h2>
     <div class="fld"><label>Rótulo del transformador (CD)</label><input type="text" value="${esc(cd.id)}" readonly></div>
@@ -375,6 +379,7 @@ function updateDerived() {
   const mc = $('#matchCard'); if (mc) mc.innerHTML = unc ? '' : matchHTML(cd, f, m);
   // clasificación
   const c = clasif(cd, f, m); $('#clasif').innerHTML = c == null ? '<span class="badge pend">Responde “¿es de este circuito?”</span>' : badge(CL[c].c, CL[c].t) + (c === 0 ? '<div class="note err">No se registra.</div>' : '');
+  sh('otro', c === 2);
   // lectura vs última
   const lh = $('#lectHint'); if (lh) { const fi = m.i != null ? cd.ficha[m.i] : null, v = num(f.lectura); lh.innerHTML = fi && fi.ultimaLectura != null ? `Última lectura en ficha: ${fmt(fi.ultimaLectura)} (periodo ${esc(fi.periodoUlt)})` + (v != null && v < fi.ultimaLectura ? ' <b style="color:var(--bad)">· la lectura es menor a la última: revisa</b>' : '') : ''; }
   // errores
@@ -393,7 +398,7 @@ async function guardar() {
   const cd = curCD(), f = S.form, unc = f.tipo === 'UNC', m = unc ? { i: null } : matchFicha(cd, f), errs = validar(cd, f, m);
   if (errs.length) return toast('Falta: ' + errs[0]);
   const marca = unc ? '' : marcaFinal(f); if (marca && f.marca === OTRA && !marcasList().includes(marca)) { (cfg.marcasExtra = cfg.marcasExtra || []).push(marca); await saveCfg(); }
-  const rec = { id: f.id || uid(), tipo: f.tipo, servicio: unc ? '' : f.servicio.trim(), cuenta: unc ? '' : f.cuenta.trim(), medidor: unc || f.marca === SINMED ? '' : f.medidor.trim(), marca: unc ? '' : marca, lectura: unc || f.marca === SINMED ? null : num(f.lectura), actividad: f.actividad, pertenece: unc ? true : f.pertenece, hallazgo: f.hallazgo, obs: f.obs.trim().toUpperCase(), direccion: f.direccion.trim().toUpperCase(), lat: f.lat, lon: f.lon, prec: f.prec, capAt: f.capAt, tecnico: f.tecnico || cfg.usuario, fecha: f.fecha || stamp(), creado: f.creado || new Date().toISOString(), editado: new Date().toISOString() };
+  const rec = { id: f.id || uid(), tipo: f.tipo, servicio: unc ? '' : f.servicio.trim(), cuenta: unc ? '' : f.cuenta.trim(), medidor: unc || f.marca === SINMED ? '' : f.medidor.trim(), marca: unc ? '' : marca, lectura: unc || f.marca === SINMED ? null : num(f.lectura), actividad: f.actividad, pertenece: unc ? true : f.pertenece, hallazgo: f.hallazgo, obs: f.obs.trim().toUpperCase(), direccion: f.direccion.trim().toUpperCase(), lat: f.lat, lon: f.lon, prec: f.prec, capAt: f.capAt, cdReal: !unc && f.pertenece === false && m.i != null ? f.cdReal.trim().toUpperCase() : '', otReal: !unc && f.pertenece === false && m.i != null ? f.otReal.trim().toUpperCase() : '', tecnico: f.tecnico || cfg.usuario, fecha: f.fecha || stamp(), creado: f.creado || new Date().toISOString(), editado: new Date().toISOString() };
   const i = cd.registros.findIndex(r => r.id === rec.id); if (i >= 0) cd.registros[i] = rec; else cd.registros.push(rec);
   await saveCD(cd);
   toast('✓ Registro guardado'); const back = S.from; S.form = newForm(unc ? 'UNC' : 'CLIENTE'); S._autoI = null; S.from = 'reg'; S.tab = back === 'lista' ? 'lista' : 'reg'; render();
@@ -439,14 +444,15 @@ function dictar() {
 async function cargarExcel(file) {
   try {
     const wb = await XLSXLite.readXlsx(await file.arrayBuffer()), cds = buildCDs(wb);
-    const box = document.createElement('div'); box.className = 'modal'; box.innerHTML = `<div class="box"><h3>Crear CD</h3>${cds.map(c => `<div class="card"><b>${esc(c.id)}</b> · ${esc(c.meta.circuito)}<br>${c.ficha.length} clientes${S.cds[c.id] ? '' : `<div class="fld" style="margin:8px 0 0"><label>N° de OT</label><input type="text" data-newot="${esc(c.id)}" autocomplete="off"></div>`}${S.cds[c.id] ? `<div class="note warn">Ya existe: se actualiza la ficha y se conservan sus ${S.cds[c.id].registros.length} registros.</div>` : ''}</div>`).join('')}<div class="row"><button class="btn" id="mNo">Cancelar</button><button class="btn pri" id="mSi">Aceptar</button></div></div>`;
+    const box = document.createElement('div'); box.className = 'modal'; box.innerHTML = `<div class="box"><h3>Crear CD</h3>${cds.map(c => `<div class="card"><b>${esc(c.id)}</b> · ${esc(c.meta.circuito)}<br>${c.ficha.length} clientes<div class="fld" style="margin:8px 0 0"><label>N° de OT</label><input type="text" data-newot="${esc(c.id)}" value="${esc(cds.indexOf(c) === 0 ? S.ot0 || '' : (S.cds[c.id] ? S.cds[c.id].ot : ''))}" autocomplete="off"></div>${S.cds[c.id] ? `<div class="note warn">Ya existe: se actualiza la ficha y se conservan sus ${S.cds[c.id].registros.length} registros.</div>` : ''}</div>`).join('')}<div class="row"><button class="btn" id="mNo">Cancelar</button><button class="btn pri" id="mSi">Aceptar</button></div></div>`;
     document.body.appendChild(box); $('#mNo').onclick = () => box.remove();
     $('#mSi').onclick = async () => {
       for (const c of cds) {
-        const old = S.cds[c.id]; if (old) { old.ficha = c.ficha; old.meta = c.meta; old.balances = c.balances; S.cds[c.id] = old; } else { const o = document.querySelector(`[data-newot="${c.id}"]`); c.ot = o ? o.value.trim() : ''; S.cds[c.id] = c; }
+        const old = S.cds[c.id], o = document.querySelector(`[data-newot="${c.id}"]`), ot = o ? o.value.trim() : '';
+        if (old) { old.ficha = c.ficha; old.meta = c.meta; old.balances = c.balances; if (ot) old.ot = ot; S.cds[c.id] = old; } else { c.ot = ot; S.cds[c.id] = c; }
         await saveCD(S.cds[c.id]);
       }
-      await saveCfg(); box.remove(); toast(`✓ ${cds.length} CD listo(s)`); if (cds.length === 1) { S.cur = cds[0].id; S.view = 'cd'; S.tab = 'lista'; S.form = newForm(); } render();
+      await saveCfg(); box.remove(); S.ot0 = ''; toast(`✓ ${cds.length} CD listo(s)`); if (cds.length === 1) { S.cur = cds[0].id; S.view = 'cd'; S.tab = 'lista'; S.form = newForm(); } render();
     };
   } catch (e) { toast('No pude leer la ficha: ' + (e.message || e), 5000); }
 }
@@ -469,6 +475,7 @@ document.addEventListener('click', async ev => {
   }
   switch (t.dataset.act) {
     case 'cambiar-usuario': cfg.usuario = ''; await saveCfg(); return render();
+    case 'cargar': if (!S.ot0) return toast('Escribe primero la OT'); return $('#fx').click();
     case 'home': if (S.geo) geoStop(false); S.view = 'home'; S.cur = null; return render();
     case 'open-cd': S.cur = t.dataset.id; S.view = 'cd'; S.tab = 'lista'; S.q = ''; S.flt = 'todos'; S.form = newForm(); S.from = 'reg'; return render();
     case 'nuevo': S.form = newForm(); S.from = 'reg'; S._autoI = null; S.tab = 'reg'; return render();
@@ -490,10 +497,11 @@ document.addEventListener('click', async ev => {
 });
 document.addEventListener('input', ev => {
   const el = ev.target, cd = curCD();
+  if (el.dataset.ot0 !== undefined) { S.ot0 = el.value.trim(); const b = $('#btnFicha'); if (b) b.disabled = !S.ot0; return; }
   if (el.id === 'q') { S.q = el.value; $('#lst').innerHTML = listHTML(cd); return; }
   if (el.dataset.cdf) { cd[el.dataset.cdf] = el.value.trim(); saveCD(cd); if (S.tab === 'reg') updateDerived(); return; }
   const k = el.dataset.f; if (!k || !S.form) return;
-  if (['obs', 'direccion', 'marcaOtra'].includes(k)) { const p = el.selectionStart; el.value = el.value.toUpperCase(); try { el.setSelectionRange(p, p); } catch { } }
+  if (['obs', 'direccion', 'marcaOtra', 'cdReal', 'otReal'].includes(k)) { const p = el.selectionStart; el.value = el.value.toUpperCase(); try { el.setSelectionRange(p, p); } catch { } }
   S.form[k] = el.value; updateDerived();
 });
 document.addEventListener('change', async ev => {
