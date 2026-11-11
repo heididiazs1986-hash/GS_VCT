@@ -222,10 +222,10 @@ function listHTML(cd) {
   return out.slice(0, 400).map(it => {
     const x = it.f || it.r, c = it.r ? clasif(cd, it.r) : null;
     const chip = it.r ? (it.r.tipo === 'UNC' ? badge('unc', 'UNC') : badge(CL[c] ? CL[c].c : 'none', c === 1 ? 'Del circuito ✓' : c === 2 || c === 0 ? (otOk(it.r.otReal) ? 'Otro circuito ✓' : 'Otro circuito · falta OT') : c === 3 ? 'No en ficha' : 'Sin clasificar')) : badge('pend', 'Pendiente');
-    const title = it.r && it.r.tipo === 'UNC' ? 'Usuario no cliente' : `Serv. ${esc(x.servicio || '—')} · Cta. ${esc(x.cuenta || '—')}`;
+    const title = it.r && it.r.tipo === 'UNC' ? 'Usuario no cliente' : `Serv. ${esc(x.servicio || '—')} · Cta. ${esc(x.cuenta || '—')} · Med. ${esc(x.medidor || '—')}`;
     const dir = x.direccion || (it.r && it.r.direccion) || '';
     const extra = it.f && (it.f.cosecha || !it.f.medidor) ? ` · <span style="color:var(--warn)">${esc(it.f.cosecha || 'Sin medidor en ficha')}</span>` : '';
-    return `<button class="it" ${it.extra ? `data-act="open-reg" data-id="${esc(it.r.id)}"` : `data-act="open-ficha" data-i="${it.i}"`}><div class="t"><span>${title}</span>${chip}</div><div class="s">${esc(dir) || 'Sin dirección'}</div><div class="s">Medidor ${esc(x.medidor || '—')} ${esc(x.marca || '')}${extra}${it.r && it.r.hallazgo && it.r.hallazgo !== 'SIN HALLAZGO' ? ' · ⚠ ' + esc(it.r.hallazgo) : ''}</div></button>`;
+    return `<button class="it" ${it.extra ? `data-act="open-reg" data-id="${esc(it.r.id)}"` : `data-act="open-ficha" data-i="${it.i}"`}><div class="t"><span>${title}</span>${chip}</div><div class="s">${esc(dir) || 'Sin dirección'}</div>${[x.marca ? esc(x.marca) : '', extra ? extra.replace(/^ · /, '') : '', it.r && it.r.hallazgo && it.r.hallazgo !== 'SIN HALLAZGO' ? '⚠ ' + esc(it.r.hallazgo) : ''].filter(Boolean).length ? `<div class="s">${[x.marca ? esc(x.marca) : '', extra ? extra.replace(/^ · /, '') : '', it.r && it.r.hallazgo && it.r.hallazgo !== 'SIN HALLAZGO' ? '⚠ ' + esc(it.r.hallazgo) : ''].filter(Boolean).join(' · ')}</div>` : ''}</button>`;
   }).join('') + (out.length > 400 ? '<div class="note">Mostrando 400; usa el buscador para acotar.</div>' : '');
 }
 
