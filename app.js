@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.7.6';
+const VER = '1.7.7';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -125,7 +125,7 @@ function clasif(cd, r, m) {
 }
 
 // ---------- exportación: Excel con 3 tablas ----------
-const COLS = ['ID_REGISTRO', 'CD', 'OT', 'FECHA_HORA', 'TECNICO', 'TIPO_USUARIO', 'CLASIFICACION', 'NRO_SERVICIO', 'NRO_CUENTA', 'NRO_MEDIDOR', 'MARCA_MEDIDOR', 'LECTURA_ENERGIA_ACTIVA', 'ACTIVIDAD_ECONOMICA', 'MATERIAL_PREDIO', 'DIRECCION', 'LATITUD', 'LONGITUD', 'PRECISION_M', 'HALLAZGO_PERDIDAS', 'OBSERVACION', 'PLACA_TRANSFORMADOR', 'ROTULO_REAL', 'CAPACIDAD_KVA', 'HALLAZGOS_CD', 'CD_CORRECTO', 'KVA_CD_CORRECTO', 'OT_CD_CORRECTO', 'FICHA_MEDIDOR', 'FICHA_MARCA', 'DIFIERE_MEDIDOR'];
+const COLS = ['ID_REGISTRO', 'CD', 'OT', 'FECHA_HORA', 'TECNICO', 'TIPO_USUARIO', 'CLASIFICACION', 'NRO_SERVICIO', 'NRO_CUENTA', 'NRO_MEDIDOR', 'MARCA_MEDIDOR', 'LECTURA_ENERGIA_ACTIVA', 'CLASE_USO', 'MATERIAL_PREDIO', 'DIRECCION', 'LATITUD', 'LONGITUD', 'PRECISION_M', 'HALLAZGO_PERDIDAS', 'OBSERVACION', 'PLACA_TRANSFORMADOR', 'ROTULO_REAL', 'CAPACIDAD_KVA', 'HALLAZGOS_CD', 'CD_CORRECTO', 'KVA_CD_CORRECTO', 'OT_CD_CORRECTO', 'FICHA_MEDIDOR', 'FICHA_MARCA', 'DIFIERE_MEDIDOR', 'FICHA_CLASE_SERVICIO', 'DIFIERE_CLASE'];
 const WIDTHS = [14, 11, 14, 19, 22, 13, 30, 14, 12, 14, 14, 12, 16, 16, 34, 12, 12, 10, 40, 40, 40, 16, 12, 50, 14, 12, 14, 14, 14, 10];
 function buildSheets(cd) {
   const rows = { 1: [], 2: [], 3: [], 4: [] };
@@ -133,7 +133,7 @@ function buildSheets(cd) {
     const m = r.tipo === 'CLIENTE' ? matchFicha(cd, r) : { i: null }, c0 = clasif(cd, r, m); if (c0 == null) return; const c = c0 === 0 ? 2 : c0 === 3 ? (r.tipo === 'UNC' ? 3 : 4) : c0;
     const f = m.i != null ? cd.ficha[m.i] : null;
     const dif = f && f.medidor && r.medidor && idn(f.medidor) !== idn(r.medidor) ? 'SI' : (f ? 'NO' : '');
-    rows[c].push([r.id, cd.id, cd.ot || '', r.fecha || '', r.tecnico || '', r.tipo === 'UNC' ? 'UNC' : 'CLIENTE', r.tipo === 'UNC' ? 'USUARIO NO CLIENTE (UNC)' : CL[c0].t, r.servicio || '', r.cuenta || '', r.medidor || '', r.marca || '', num(r.lectura), r.actividad || '', r.tipo === 'UNC' ? r.material || '' : '', r.direccion || (f ? f.direccion : ''), r.lat, r.lon, r.prec == null ? null : Math.round(r.prec * 10) / 10, r.hallazgo || '', r.obs || '', cd.placa || '', cd.placa === PLACA_NO ? cd.placaReal || '' : '', cd.capacidad || '', (cd.hallazgosCD || []).join(' | '), c === 2 ? r.cdReal || '' : '', c === 2 ? r.capReal || '' : '', c === 2 ? r.otReal || '' : '', f ? f.medidor : '', f ? f.marca : '', dif]);
+    rows[c].push([r.id, cd.id, cd.ot || '', r.fecha || '', r.tecnico || '', r.tipo === 'UNC' ? 'UNC' : 'CLIENTE', r.tipo === 'UNC' ? 'USUARIO NO CLIENTE (UNC)' : CL[c0].t, r.servicio || '', r.cuenta || '', r.medidor || '', r.marca || '', num(r.lectura), r.actividad || '', r.tipo === 'UNC' ? r.material || '' : '', r.direccion || (f ? f.direccion : ''), r.lat, r.lon, r.prec == null ? null : Math.round(r.prec * 10) / 10, r.hallazgo || '', r.obs || '', cd.placa || '', cd.placa === PLACA_NO ? cd.placaReal || '' : '', cd.capacidad || '', (cd.hallazgosCD || []).join(' | '), c === 2 ? r.cdReal || '' : '', c === 2 ? r.capReal || '' : '', c === 2 ? r.otReal || '' : '', f ? f.medidor : '', f ? f.marca : '', dif, f ? f.clase || '' : '', f && f.clase && r.actividad ? (f.clase === r.actividad ? 'NO' : 'SI') : '']);
   });
   return [
     { name: '1_EN_FICHA_DE_ESTE_CD', table: 'tblEnFichaEsteCD', columns: COLS, rows: rows[1], widths: WIDTHS },
@@ -278,7 +278,7 @@ function viewReg(cd) {
   return `<div class="card"><h2 id="ttl">${unc ? 'Usuario no cliente (UNC)' : m0.i != null ? 'Cliente' : 'Cliente no registrado en ficha · vinculado a este CD'}</h2>
     ${unc ? `<div class="fld"><label class="req">Ubicación</label><div id="geo">${geoHTML(f)}</div></div>` : cli}
     ${unc ? `<div class="fld"><label class="req">Tipo de material del predio</label><select data-f="material">${opts(MATERIALES, f.material, 'Selecciona…')}</select></div>` : ''}
-    <div class="fld"><label class="req">Actividad económica</label><select data-f="actividad">${opts(ACTIVIDADES, f.actividad, 'Selecciona…')}</select></div>
+    <div class="fld"><label class="req">Clase de uso</label><select data-f="actividad">${opts(ACTIVIDADES, f.actividad, 'Selecciona…')}</select></div>
     <div class="fld"><label>Dirección (opcional)</label><input type="text" data-f="direccion" value="${esc(f.direccion)}" style="text-transform:uppercase"></div>
     <div class="fld"><label class="req">Hallazgo de pérdidas</label><select data-f="hallazgo">${opts(unc ? HALLAZGOS_UNC : HALLAZGOS, f.hallazgo, 'Selecciona…')}</select></div>
     <div class="fld"><label>Observación</label><div class="row" style="align-items:flex-start;flex-wrap:nowrap"><textarea data-f="obs" placeholder="OBSERVACIÓN…">${esc(f.obs)}</textarea><button type="button" class="btn mic" data-act="dictar" aria-label="Dictar">${ic('mic')}</button></div></div>
@@ -389,7 +389,7 @@ function validar(cd, f, m) {
     if (f.pertenece == null) e.push('¿Cliente vinculado a este CD? (SÍ / NO)');
     if (f.pertenece === false && f.otReal && !otOk(f.otReal)) e.push(`OT del CD correcto (${OT_LEN} dígitos)`);
   }
-  if (!f.actividad) e.push('Actividad económica'); if (unc && !f.material) e.push('Tipo de material del predio');
+  if (!f.actividad) e.push('Clase de uso'); if (unc && !f.material) e.push('Tipo de material del predio');
   if (unc) { if (f.lat == null) e.push('Capturar coordenada (obligatoria para UNC)'); }
   if (!f.hallazgo) e.push('Hallazgo técnico'); else if (f.hallazgo === HOTRO && !f.obs.trim()) e.push('Describe el hallazgo en la observación');
   // duplicados
@@ -408,7 +408,6 @@ function updateDerived() {
     S._autoI = m.i; const fi = cd.ficha[m.i];
     setIfEmpty('servicio', fi.servicio); setIfEmpty('cuenta', fi.cuenta); setIfEmpty('medidor', fi.medidor); setIfEmpty('direccion', String(fi.direccion || '').toUpperCase());
     if (!f.marca) { const mk = fi.marca; if (!fi.medidor && !mk) f.marca = SINMED; else if (mk && marcasList().includes(mk)) f.marca = mk; else if (mk) { f.marca = OTRA; f.marcaOtra = mk; } const sel = $('[data-f="marca"]'); if (sel) sel.value = f.marca; const ot = $('[data-f="marcaOtra"]'); if (ot) ot.value = f.marcaOtra; }
-    if (!f.actividad) { const a = ACTIVIDADES.find(x => x === fi.clase); if (a) { f.actividad = a; const sel = $('[data-f="actividad"]'); if (sel) sel.value = a; } }
   }
   if (m.i == null) S._autoI = null;
   // mostrar/ocultar
