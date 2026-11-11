@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.5.0';
+const VER = '1.6.0';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -202,11 +202,32 @@ function viewHome() {
     ${list.map(cd => { const s = stats(cd); return `<button class="it" data-act="open-cd" data-id="${esc(cd.id)}"><div class="t"><span>${esc(cd.id)} <span style="font-weight:500;color:var(--mut)">· ${esc(cd.meta.circuito)}</span></span><span class="badge ${s.pend === 0 && s.total ? 'ok' : 'pend'}">${s.visit}/${s.total}</span></div><div class="s">${s.n} registros${cd.ot ? ' · OT ' + esc(cd.ot) : ''}${cd.exportadoEn ? '' : ' · sin exportar'}</div></button>`; }).join('')}
     <div style="text-align:center;margin-top:10px"><label class="btn sm"><input type="file" id="fj" accept=".json" hidden>Restaurar respaldo</label></div>${FOOT}`;
 }
+function balanceHTML(cd) {
+  const all = [...(cd.balances || [])].sort((a, b) => String(a.periodo).localeCompare(String(b.periodo)));
+  if (!all.length) return '';
+  const ok = b => b.indice != null && b.entradas > 0 && b.perdidas >= 0, per = p => String(p).length === 6 ? String(p).slice(4) + '/' + String(p).slice(2, 4) : String(p);
+  const vals = all.slice(-12), valid = all.filter(ok), last = valid[valid.length - 1], prev = valid[valid.length - 2];
+  const W = 340, H = 168, top = 22, bot = 30, padL = 10, padR = 10, n = vals.length, step = (W - padL - padR) / n, bw = Math.min(34, step * 0.62);
+  const mx = Math.max(0.3, ...vals.filter(ok).map(b => b.indice)) * 1.12, y = v => top + (H - top - bot) * (1 - v / mx);
+  const bars = vals.map((b, i) => {
+    const x = padL + step * i + (step - bw) / 2, good = ok(b), h = good ? Math.max(2, (H - top - bot) * (b.indice / mx)) : 0, col = !good ? 'var(--mut)' : b.indice >= 0.2 ? 'url(#gOr)' : 'url(#gBl)';
+    return `<rect x="${x.toFixed(1)}" y="${(H - bot - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="5" style="fill:${col};opacity:${good ? 1 : .35}"/>
+      <text x="${(x + bw / 2).toFixed(1)}" y="${(good ? H - bot - h - 5 : H - bot - 5).toFixed(1)}" text-anchor="middle" class="bv">${good ? fmt(b.indice * 100, 1) : '⚠'}</text>
+      <text x="${(x + bw / 2).toFixed(1)}" y="${H - 11}" text-anchor="middle" class="bl">${per(b.periodo)}</text>`;
+  }).join('');
+  const ty = y(0.2).toFixed(1), delta = last && prev ? (last.indice - prev.indice) * 100 : null;
+  const tabla = `<details class="det"><summary>Ver tabla</summary><table class="tb"><tr><th>Periodo</th><th>Entradas</th><th>Salidas</th><th>Pérdidas</th><th>Índice</th></tr>${[...all].reverse().map(b => `<tr><td>${esc(b.periodo)}</td><td>${fmt(b.entradas)}</td><td>${fmt(b.salidas)}</td><td>${fmt(b.perdidas)}</td><td style="color:${ok(b) && b.indice >= 0.2 ? '#E8590C' : 'inherit'};font-weight:700">${b.indice == null ? '—' : fmt(b.indice * 100, 1) + ' %'}${ok(b) ? '' : ' ⚠'}</td></tr>`).join('')}</table></details>`;
+  return `<div class="card dash"><h2>Balance del transformador${last ? ` <span class="sub">· ${per(last.periodo)}</span>` : ''}</h2>
+    ${last ? `<div class="kpis"><div class="kpi big"><b style="color:${last.indice >= 0.2 ? '#E8590C' : '#1F86C4'}">${fmt(last.indice * 100, 1)} %</b><span>Índice de pérdidas${delta != null ? `<br><i class="${delta > 0 ? 'up' : 'dn'}">${delta > 0 ? '▲' : '▼'} ${fmt(Math.abs(delta), 1)} pts vs ${per(prev.periodo)}</i>` : ''}</span></div><div class="kpi"><b>${fmt(last.perdidas)}</b><span>Pérdidas kWh</span></div><div class="kpi"><b>${fmt(last.entradas)}</b><span>Entradas kWh</span></div></div>` : ''}
+    <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Índice de pérdidas por periodo"><defs><linearGradient id="gOr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF9A4D"/><stop offset="1" stop-color="#FF6600"/></linearGradient><linearGradient id="gBl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8BD6FF"/><stop offset="1" stop-color="#2F9BD6"/></linearGradient></defs><line x1="${padL}" x2="${W - padR}" y1="${ty}" y2="${ty}" class="thr"/>${bars}</svg>
+    <div class="lg"><span><i style="background:#FF6600"></i>Sobre la meta (≥ 20 %)</span><span><i style="background:#2F9BD6"></i>Dentro de la meta</span></div>
+    ${tabla}</div>`;
+}
 function viewLista(cd) {
   const s = stats(cd), fl = S.flt;
   const fuera = cd.registros.filter(r => r.tipo === 'UNC' || matchFicha(cd, r).i == null).length;
   const ch = [['todos', 'Todos ' + (s.total + fuera)], ['pend', 'Pendientes ' + s.pend], ['reg', 'Registrados ' + s.n], ['fuera', 'Fuera de ficha ' + fuera]];
-  return `<div class="row" style="margin-bottom:6px"><input type="search" id="q" placeholder="Buscar servicio, cuenta, medidor…" value="${esc(S.q)}"><button class="btn pri" style="flex:0 0 auto" data-act="nuevo">+ Nuevo</button></div>
+  return balanceHTML(cd) + `<div class="row" style="margin-bottom:6px"><input type="search" id="q" placeholder="Buscar servicio, cuenta, medidor…" value="${esc(S.q)}"><button class="btn pri" style="flex:0 0 auto" data-act="nuevo">+ Nuevo</button></div>
     <div class="chips">${ch.map(([k, l]) => `<button class="chip ${fl === k ? 'on' : ''}" data-flt="${k}">${l}</button>`).join('')}</div>
     <div id="lst">${listHTML(cd)}</div>${FOOT}`;
 }
@@ -374,8 +395,7 @@ function viewRes(cd) {
     <div class="card"><h2>Exportar</h2><div class="row"><button class="btn pri" data-act="xlsx">Exportar Excel</button><button class="btn" data-act="xlsx-share">Compartir</button></div>
     <div class="row" style="margin-top:8px"><button class="btn" data-act="json">Respaldo</button><button class="btn bad" data-act="del-cd">Eliminar CD</button></div>
     <p style="font-size:12px;color:var(--mut)">${cd.exportadoEn ? 'Última exportación: ' + esc(stamp(new Date(cd.exportadoEn))) : 'Aún no exportado.'}</p></div>
-    <div class="card"><h2>Balance de pérdidas del transformador</h2>${cd.balances.length ? `<table class="tb"><tr><th>Periodo</th><th>Entradas</th><th>Salidas</th><th>Pérdidas</th><th>Índice</th></tr>${cd.balances.map(b => `<tr><td>${esc(b.periodo)}</td><td>${fmt(b.entradas)}</td><td>${fmt(b.salidas)}</td><td>${fmt(b.perdidas)}</td><td style="color:${b.indice >= 0.2 ? 'var(--bad)' : 'inherit'};font-weight:700">${b.indice == null ? '—' : fmt(b.indice * 100, 1) + ' %'}${b.entradas === 0 ? ' ⚠' : ''}</td></tr>`).join('')}</table>` : '<p>Sin balances en el Excel.</p>'}
-    </div>${FOOT}`;
+    ${balanceHTML(cd)}${FOOT}`;
 }
 
 // ajustes ---------------------------------------------------
