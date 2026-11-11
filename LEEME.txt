@@ -1,0 +1,9 @@
+GS VCT - Reporte de novedades Vínculo Cliente - Transformador
+Desarrollado por Heidi Díaz
+
+Publicar (igual que tus otras apps GS):
+1. Crea un repo en GitHub (sugerido: GS_VCT) y sube estos archivos tal cual (index.html, app.js, xlsx.js, sw.js, manifest.webmanifest, icon-192.png, icon-512.png).
+2. Impórtalo en Vercel (sin framework, sin build).
+3. Abre la dirección en el celular y "Instalar app"/"Agregar a pantalla de inicio". Funciona sin conexión.
+
+Uso: Inicio > Cargar Excel del CD (hojas CLIENTES y BALANCES) > abrir el CD > registrar > Resumen > Excel (3 tablas).
