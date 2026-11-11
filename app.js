@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.4.0';
+const VER = '1.5.0';
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
 const otOk = v => new RegExp('^\\d{' + OT_LEN + '}$').test(v || '');
@@ -115,7 +115,7 @@ function otherCD(cd, q) { // ¿aparece en la ficha de otro CD cargado?
   for (const id in S.cds) { if (id === cd.id) continue; const m = matchFicha(S.cds[id], q); if (m.i != null) out.push(id); }
   return out;
 }
-const CL = { 1: { t: 'EN FICHA Y DEL CIRCUITO', c: 'ok' }, 2: { t: 'EN FICHA, NO VINCULADO A ESTE CIRCUITO', c: 'bad' }, 3: { t: 'NO EN FICHA, DEL CIRCUITO', c: 'new' }, 0: { t: 'CLIENTE NO VINCULADO A ESTE CIRCUITO (NO EN FICHA)', c: 'bad' } };
+const CL = { 1: { t: 'EN FICHA, DE ESTE CD', c: 'ok' }, 2: { t: 'EN FICHA, DE OTRO CD', c: 'bad' }, 3: { t: 'NO EN FICHA, VINCULADO A ESTE CD', c: 'new' }, 0: { t: 'NO EN FICHA, DE OTRO CD', c: 'bad' } };
 function clasif(cd, r, m) {
   if (r.tipo === 'UNC') return 3;
   m = m || matchFicha(cd, r);
@@ -127,17 +127,18 @@ function clasif(cd, r, m) {
 const COLS = ['ID_REGISTRO', 'CD', 'OT', 'FECHA_HORA', 'TECNICO', 'TIPO_USUARIO', 'CLASIFICACION', 'NRO_SERVICIO', 'NRO_CUENTA', 'NRO_MEDIDOR', 'MARCA_MEDIDOR', 'LECTURA_ENERGIA_ACTIVA', 'ACTIVIDAD_ECONOMICA', 'MATERIAL_PREDIO', 'DIRECCION', 'LATITUD', 'LONGITUD', 'PRECISION_M', 'HALLAZGO_PERDIDAS', 'OBSERVACION', 'PLACA_TRANSFORMADOR', 'ROTULO_REAL', 'CAPACIDAD_KVA', 'HALLAZGOS_CD', 'CD_CORRECTO', 'KVA_CD_CORRECTO', 'OT_CD_CORRECTO', 'FICHA_MEDIDOR', 'FICHA_MARCA', 'DIFIERE_MEDIDOR'];
 const WIDTHS = [14, 11, 14, 19, 22, 13, 30, 14, 12, 14, 14, 12, 16, 16, 34, 12, 12, 10, 40, 40, 40, 16, 12, 50, 14, 12, 14, 14, 14, 10];
 function buildSheets(cd) {
-  const rows = { 1: [], 2: [], 3: [] };
+  const rows = { 1: [], 2: [], 3: [], 4: [] };
   [...cd.registros].sort((a, b) => a.creado.localeCompare(b.creado)).forEach(r => {
-    const m = r.tipo === 'CLIENTE' ? matchFicha(cd, r) : { i: null }, c0 = clasif(cd, r, m); if (c0 == null) return; const c = c0 === 0 ? 2 : c0;
+    const m = r.tipo === 'CLIENTE' ? matchFicha(cd, r) : { i: null }, c0 = clasif(cd, r, m); if (c0 == null) return; const c = c0 === 0 ? 2 : c0 === 3 ? (r.tipo === 'UNC' ? 3 : 4) : c0;
     const f = m.i != null ? cd.ficha[m.i] : null;
     const dif = f && f.medidor && r.medidor && idn(f.medidor) !== idn(r.medidor) ? 'SI' : (f ? 'NO' : '');
-    rows[c].push([r.id, cd.id, cd.ot || '', r.fecha || '', r.tecnico || '', r.tipo === 'UNC' ? 'UNC' : 'CLIENTE', CL[c0].t, r.servicio || '', r.cuenta || '', r.medidor || '', r.marca || '', num(r.lectura), r.actividad || '', r.tipo === 'UNC' ? r.material || '' : '', r.direccion || (f ? f.direccion : ''), r.lat, r.lon, r.prec == null ? null : Math.round(r.prec * 10) / 10, r.hallazgo || '', r.obs || '', cd.placa || '', cd.placa === PLACA_NO ? cd.placaReal || '' : '', cd.capacidad || '', (cd.hallazgosCD || []).join(' | '), c === 2 ? r.cdReal || '' : '', c === 2 ? r.capReal || '' : '', c === 2 ? r.otReal || '' : '', f ? f.medidor : '', f ? f.marca : '', dif]);
+    rows[c].push([r.id, cd.id, cd.ot || '', r.fecha || '', r.tecnico || '', r.tipo === 'UNC' ? 'UNC' : 'CLIENTE', r.tipo === 'UNC' ? 'USUARIO NO CLIENTE (UNC)' : CL[c0].t, r.servicio || '', r.cuenta || '', r.medidor || '', r.marca || '', num(r.lectura), r.actividad || '', r.tipo === 'UNC' ? r.material || '' : '', r.direccion || (f ? f.direccion : ''), r.lat, r.lon, r.prec == null ? null : Math.round(r.prec * 10) / 10, r.hallazgo || '', r.obs || '', cd.placa || '', cd.placa === PLACA_NO ? cd.placaReal || '' : '', cd.capacidad || '', (cd.hallazgosCD || []).join(' | '), c === 2 ? r.cdReal || '' : '', c === 2 ? r.capReal || '' : '', c === 2 ? r.otReal || '' : '', f ? f.medidor : '', f ? f.marca : '', dif]);
   });
   return [
-    { name: '1_EN_FICHA_DEL_CIRCUITO', table: 'tblEnFichaDelCircuito', columns: COLS, rows: rows[1], widths: WIDTHS },
-    { name: '2_FUERA_DEL_CIRCUITO', table: 'tblFueraDelCircuito', columns: COLS, rows: rows[2], widths: WIDTHS },
-    { name: '3_NO_FICHA_DEL_CIRCUITO', table: 'tblNoFichaDelCircuito', columns: COLS, rows: rows[3], widths: WIDTHS }
+    { name: '1_EN_FICHA_DE_ESTE_CD', table: 'tblEnFichaEsteCD', columns: COLS, rows: rows[1], widths: WIDTHS },
+    { name: '2_EN_FICHA_DE_OTRO_CD', table: 'tblEnFichaOtroCD', columns: COLS, rows: rows[2], widths: WIDTHS },
+    { name: '3_UNC', table: 'tblUNC', columns: COLS, rows: rows[3], widths: WIDTHS },
+    { name: '4_NO_EN_FICHA_VINCULADOS', table: 'tblNoEnFichaVinculados', columns: COLS, rows: rows[4], widths: WIDTHS }
   ];
 }
 const mkBlob = (data, type) => new Blob([data], { type });
@@ -171,12 +172,12 @@ const FOOT = '<div class="foot">Desarrollado por Heidi Díaz</div>';
 const badge = (c, t) => `<span class="badge ${c}">${esc(t)}</span>`;
 
 function stats(cd) {
-  const reg = new Map(); let t1 = 0, t2 = 0, t3 = 0, unc = 0, inv = 0;
+  const reg = new Map(); let t1 = 0, t2 = 0, t3 = 0, t4 = 0, unc = 0, inv = 0;
   cd.registros.forEach(r => {
     const m = r.tipo === 'CLIENTE' ? matchFicha(cd, r) : { i: null }; if (m.i != null) reg.set(m.i, r);
-    const c = clasif(cd, r, m); if (c === 1) t1++; else if (c === 2 || c === 0) t2++; else if (c === 3) t3++; else inv++; if (r.tipo === 'UNC') unc++;
+    const c = clasif(cd, r, m); if (c === 1) t1++; else if (c === 2 || c === 0) t2++; else if (c === 3) { if (r.tipo === 'UNC') t3++; else t4++; } else inv++; if (r.tipo === 'UNC') unc++;
   });
-  return { reg, total: cd.ficha.length, visit: reg.size, pend: cd.ficha.length - reg.size, t1, t2, t3, unc, inv, n: cd.registros.length };
+  return { reg, total: cd.ficha.length, visit: reg.size, pend: cd.ficha.length - reg.size, t1, t2, t3, t4, unc, inv, n: cd.registros.length };
 }
 
 // ---------- vistas ----------
@@ -235,6 +236,7 @@ function formFromRec(r) {
 }
 function viewReg(cd) {
   const f = S.form || (S.form = newForm()), unc = f.tipo === 'UNC';
+  const m0 = unc ? { i: null } : matchFicha(cd, f);
   const cli = `<div class="fld"><label class="req">N° de servicio eléctrico</label><input type="text" inputmode="numeric" data-f="servicio" value="${esc(f.servicio)}" autocomplete="off"></div>
       <div class="fld"><label class="req">N° de cuenta</label><input type="text" inputmode="numeric" data-f="cuenta" value="${esc(f.cuenta)}" autocomplete="off"></div>
       <div class="fld"><label class="req">N° de medidor</label><input type="text" inputmode="text" data-f="medidor" value="${esc(f.medidor)}" autocomplete="off"></div>
@@ -242,7 +244,7 @@ function viewReg(cd) {
       <div class="fld"><label class="req">Marca del medidor</label><select data-f="marca">${opts([...marcasList(), SINMED, OTRA], f.marca, 'Selecciona…')}</select></div>
       <div class="fld ${f.marca === OTRA ? '' : 'hidden'}" data-show="otra"><label class="req">Escribe la marca</label><input type="text" data-f="marcaOtra" value="${esc(f.marcaOtra)}" style="text-transform:uppercase"></div>
       <div class="fld ${f.marca === SINMED ? 'hidden' : ''}" data-show="lect"><label class="req">Lectura de energía activa (kWh)</label><input type="number" inputmode="decimal" step="any" data-f="lectura" value="${esc(f.lectura)}"><div id="lectHint"></div></div>
-      <div class="fld"><label class="req">¿Es de este circuito?</label><div class="seg" data-seg="pertenece"><button data-v="1" class="${f.pertenece === true ? 'on' : ''}">SÍ</button><button data-v="0" class="${f.pertenece === false ? 'on no' : ''}">NO</button></div></div>
+      <div class="fld ${m0.i != null ? '' : 'hidden'}" data-show="pert"><label class="req">¿Es de este circuito?</label><div class="seg" data-seg="pertenece"><button data-v="1" class="${f.pertenece === true ? 'on' : ''}">SÍ</button><button data-v="0" class="${f.pertenece === false ? 'on no' : ''}">NO</button></div></div>
       <div class="fld" id="clasif"></div>
       <div data-show="otro" class="hidden"><div class="note warn">Otro circuito: la OT de ese CD es obligatoria al exportar.</div>
         <div class="fld" style="margin-top:12px"><label>CD correcto</label><input type="text" data-f="cdReal" value="${esc(f.cdReal)}" placeholder="XXXXTRX" style="text-transform:uppercase" autocomplete="off"></div>
@@ -364,8 +366,8 @@ function viewRes(cd) {
   const sinOT = cd.registros.filter(r => [0, 2].includes(clasif(cd, r)) && !otOk(r.otReal)).length; if (sinOT) warns.push(`${sinOT} cliente(s) de otro circuito sin OT: se piden al exportar.`);
   if (s.pend) warns.push(`Quedan ${s.pend} clientes de la ficha sin registrar.`);
   return `<div class="card"><h2>Datos del CD</h2><div class="fld"><label class="req">N° de OT</label><input type="text" ${otAtt} data-cdf="ot" value="${esc(cd.ot)}" autocomplete="off"></div>${cdFields(cd)}</div>
-    <div class="card"><h2>Avance</h2><div class="kpis"><div class="kpi"><b>${s.visit}/${s.total}</b><span>Ficha visitada</span></div><div class="kpi"><b>${s.pend}</b><span>Pendientes</span></div><div class="kpi"><b>${s.unc}</b><span>UNC</span></div>
-    <div class="kpi"><b style="color:var(--ok)">${s.t1}</b><span>Tabla 1<br>En ficha, del circuito</span></div><div class="kpi"><b style="color:var(--bad)">${s.t2}</b><span>Tabla 2<br>Fuera del circuito</span></div><div class="kpi"><b style="color:var(--new)">${s.t3}</b><span>Tabla 3<br>No en ficha, del circuito</span></div></div>
+    <div class="card"><h2>Avance</h2><div class="kpis"><div class="kpi"><b>${s.visit}/${s.total}</b><span>Ficha visitada</span></div><div class="kpi"><b>${s.pend}</b><span>Pendientes</span></div></div>
+    <div class="kpis k2" style="margin-top:10px"><div class="kpi"><b style="color:var(--ok)">${s.t1}</b><span>En ficha, de este CD</span></div><div class="kpi"><b style="color:var(--bad)">${s.t2}</b><span>En ficha, de otro CD</span></div><div class="kpi"><b style="color:var(--new)">${s.t3}</b><span>UNC</span></div><div class="kpi"><b style="color:var(--new)">${s.t4}</b><span>No en ficha, vinculados</span></div></div>
     ${warns.map(w => `<div class="note warn">${esc(w)}</div>`).join('')}</div>
     <div class="card"><h2>Exportar</h2><div class="row"><button class="btn pri" data-act="xlsx">Exportar Excel</button><button class="btn" data-act="xlsx-share">Compartir</button></div>
     <div class="row" style="margin-top:8px"><button class="btn" data-act="json">Respaldo</button><button class="btn bad" data-act="del-cd">Eliminar CD</button></div>
@@ -424,6 +426,8 @@ function updateDerived() {
   if (m.i == null) S._autoI = null;
   // mostrar/ocultar
   const sh = (k, on) => { const el = $(`[data-show="${k}"]`); if (el) el.classList.toggle('hidden', !on); };
+  sh('pert', m.i != null);
+  if (!unc) { if (m.i == null && f.pertenece !== true) { f.pertenece = true; f._auto = true; } else if (m.i != null && f._auto) { f.pertenece = null; f._auto = false; document.querySelectorAll('[data-seg="pertenece"] button').forEach(b => b.classList.remove('on', 'no')); } }
   sh('otra', f.marca === OTRA); sh('lect', f.marca !== SINMED);
   // tarjeta de coincidencia
   const mc = $('#matchCard'); if (mc) mc.innerHTML = unc ? '' : matchHTML(cd, f, m);
