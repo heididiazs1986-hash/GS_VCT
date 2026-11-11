@@ -240,7 +240,7 @@ function viewReg(cd) {
       <div id="matchCard"></div>
       <div class="fld"><label class="req">Marca del medidor</label><select data-f="marca">${opts([...marcasList(), SINMED, OTRA], f.marca, 'Selecciona…')}</select></div>
       <div class="fld ${f.marca === OTRA ? '' : 'hidden'}" data-show="otra"><label class="req">Escribe la marca</label><input type="text" data-f="marcaOtra" value="${esc(f.marcaOtra)}" style="text-transform:uppercase"></div>
-      <div class="fld ${f.marca === SINMED ? 'hidden' : ''}" data-show="lect"><label class="req">Lectura de energía activa (kWh)</label><input type="number" inputmode="decimal" step="any" data-f="lectura" value="${esc(f.lectura)}"><small id="lectHint"></small></div>
+      <div class="fld ${f.marca === SINMED ? 'hidden' : ''}" data-show="lect"><label class="req">Lectura de energía activa (kWh)</label><input type="number" inputmode="decimal" step="any" data-f="lectura" value="${esc(f.lectura)}"><div id="lectHint"></div></div>
       <div class="fld"><label class="req">¿Es de este circuito?</label><div class="seg" data-seg="pertenece"><button data-v="1" class="${f.pertenece === true ? 'on' : ''}">SÍ</button><button data-v="0" class="${f.pertenece === false ? 'on no' : ''}">NO</button></div></div>
       <div class="fld" id="clasif"></div>
       <div data-show="otro" class="hidden"><div class="note warn">Otro circuito: la OT de ese CD es obligatoria al exportar.</div>
@@ -429,7 +429,7 @@ function updateDerived() {
   const c = clasif(cd, f, m); const clEl = $('#clasif'); if (clEl) clEl.innerHTML = c == null ? '<span class="badge pend">Responde “¿es de este circuito?”</span>' : badge(CL[c].c, CL[c].t) + '';
   sh('otro', c === 2 || c === 0);
   // lectura vs última
-  const lh = $('#lectHint'); if (lh) { const fi = m.i != null ? cd.ficha[m.i] : null, v = num(f.lectura); lh.innerHTML = fi && fi.ultimaLectura != null ? `Última lectura en ficha: ${fmt(fi.ultimaLectura)} (periodo ${esc(fi.periodoUlt)})` + (v != null && v < fi.ultimaLectura ? ' <b style="color:var(--bad)">· la lectura es menor a la última: revisa</b>' : '') : ''; }
+  const lh = $('#lectHint'); if (lh) { const fi = m.i != null ? cd.ficha[m.i] : null, v = num(f.lectura); const baja = fi && fi.ultimaLectura != null && v != null && v < fi.ultimaLectura; lh.innerHTML = fi && fi.ultimaLectura != null ? `<div class="lect${baja ? ' bad' : ''}"><span>Última lectura en ficha<b>${fmt(fi.ultimaLectura)} kWh</b><em>periodo ${esc(fi.periodoUlt)}</em></span>${baja ? '<strong>Menor a la última: revisa</strong>' : ''}</div>` : ''; }
   // errores
   const errs = validar(cd, f, m); $('#errs').innerHTML = errs.length ? `<div class="note warn"><b>Falta:</b> ${errs.map(esc).join(' · ')}${S.dup && errs.includes('Este cliente ya está registrado') ? ` <button class="btn sm" data-act="open-reg" data-id="${esc(S.dup)}">Abrir el existente</button>` : ''}</div>` : '';
   $('#btnSave').disabled = errs.length > 0;
