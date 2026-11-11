@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.6.0';
+const VER = '1.6.1';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -116,7 +116,7 @@ function otherCD(cd, q) { // ¿aparece en la ficha de otro CD cargado?
   for (const id in S.cds) { if (id === cd.id) continue; const m = matchFicha(S.cds[id], q); if (m.i != null) out.push(id); }
   return out;
 }
-const CL = { 1: { t: 'EN FICHA, DE ESTE CD', c: 'ok' }, 2: { t: 'EN FICHA, DE OTRO CD', c: 'bad' }, 3: { t: 'NO EN FICHA, VINCULADO A ESTE CD', c: 'new' }, 0: { t: 'NO EN FICHA, DE OTRO CD', c: 'bad' } };
+const CL = { 1: { t: 'EN FICHA, DE ESTE CD', c: 'ok' }, 2: { t: 'EN FICHA, DE OTRO CD', c: 'bad' }, 3: { t: 'CLIENTE NO REGISTRADO EN FICHA, VINCULADO A ESTE CD', c: 'new' }, 0: { t: 'NO EN FICHA, DE OTRO CD', c: 'bad' } };
 function clasif(cd, r, m) {
   if (r.tipo === 'UNC') return 3;
   m = m || matchFicha(cd, r);
@@ -271,7 +271,7 @@ function viewReg(cd) {
         <div class="fld" style="margin-top:12px"><label>CD correcto</label><input type="text" data-f="cdReal" value="${esc(f.cdReal)}" placeholder="XXXXTRX" style="text-transform:uppercase" autocomplete="off"></div>
         <div class="fld"><label>Capacidad del CD correcto</label><select data-f="capReal">${opts(KVA.map(k => k + ' kVA'), f.capReal, 'Selecciona…')}</select></div>
         <div class="fld"><label>OT del CD correcto</label><input type="text" ${otAtt} data-f="otReal" value="${esc(f.otReal)}" autocomplete="off"></div></div>`;
-  return `<div class="card"><h2>${unc ? 'Usuario no cliente (UNC)' : 'Cliente'}</h2>
+  return `<div class="card"><h2 id="ttl">${unc ? 'Usuario no cliente (UNC)' : m0.i != null ? 'Cliente' : 'Cliente no registrado en ficha · vinculado a este CD'}</h2>
     ${unc ? `<div class="fld"><label class="req">Ubicación</label><div id="geo">${geoHTML(f)}</div></div>` : cli}
     ${unc ? `<div class="fld"><label class="req">Tipo de material del predio</label><select data-f="material">${opts(MATERIALES, f.material, 'Selecciona…')}</select></div>` : ''}
     <div class="fld"><label class="req">Actividad económica</label><select data-f="actividad">${opts(ACTIVIDADES, f.actividad, 'Selecciona…')}</select></div>
@@ -406,7 +406,8 @@ function updateDerived() {
   // tarjeta de coincidencia
   const mc = $('#matchCard'); if (mc) mc.innerHTML = unc ? '' : matchHTML(cd, f, m);
   // clasificación
-  const c = clasif(cd, f, m); const clEl = $('#clasif'); if (clEl) clEl.innerHTML = c == null ? '' : badge(CL[c].c, CL[c].t) + '';
+  const tt = $('#ttl'); if (tt && !unc) tt.textContent = m.i != null ? 'Cliente' : 'Cliente no registrado en ficha · vinculado a este CD';
+  const c = clasif(cd, f, m); const clEl = $('#clasif'); if (clEl) clEl.innerHTML = c == null || (c === 3 && !unc) ? '' : badge(CL[c].c, CL[c].t) + '';
   sh('otro', c === 2 || c === 0);
   // lectura vs última
   const lh = $('#lectHint'); if (lh) { const fi = m.i != null ? cd.ficha[m.i] : null, v = num(f.lectura); const baja = fi && fi.ultimaLectura != null && v != null && v < fi.ultimaLectura; lh.innerHTML = fi && fi.ultimaLectura != null ? `<div class="lect${baja ? ' bad' : ''}"><span>Última lectura en ficha<b>${fmt(fi.ultimaLectura)} kWh</b><em>periodo ${esc(fi.periodoUlt)}</em></span>${baja ? '<strong>Menor a la última: revisa</strong>' : ''}</div>` : ''; }
