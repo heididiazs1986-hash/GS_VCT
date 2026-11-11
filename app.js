@@ -432,7 +432,7 @@ function updateDerived() {
   // tarjeta de coincidencia
   const mc = $('#matchCard'); if (mc) mc.innerHTML = unc ? '' : matchHTML(cd, f, m);
   // clasificación
-  const c = clasif(cd, f, m); const clEl = $('#clasif'); if (clEl) clEl.innerHTML = c == null ? '<span class="badge pend">Responde “¿es de este circuito?”</span>' : badge(CL[c].c, CL[c].t) + '';
+  const c = clasif(cd, f, m); const clEl = $('#clasif'); if (clEl) clEl.innerHTML = c == null ? '' : badge(CL[c].c, CL[c].t) + '';
   sh('otro', c === 2 || c === 0);
   // lectura vs última
   const lh = $('#lectHint'); if (lh) { const fi = m.i != null ? cd.ficha[m.i] : null, v = num(f.lectura); const baja = fi && fi.ultimaLectura != null && v != null && v < fi.ultimaLectura; lh.innerHTML = fi && fi.ultimaLectura != null ? `<div class="lect${baja ? ' bad' : ''}"><span>Última lectura en ficha<b>${fmt(fi.ultimaLectura)} kWh</b><em>periodo ${esc(fi.periodoUlt)}</em></span>${baja ? '<strong>Menor a la última: revisa</strong>' : ''}</div>` : ''; }
@@ -443,8 +443,8 @@ function updateDerived() {
 function matchHTML(cd, f, m) {
   if (!(f.servicio || f.cuenta || f.medidor)) return '';
   if (m.i == null) { const o = otherCD(cd, f); return `<div class="note">No está en la ficha de ${esc(cd.id)}.${o.length ? ` <b>Aparece en la ficha de ${esc(o.join(', '))}.</b>` : ''}</div>`; }
-  const x = cd.ficha[m.i], cons = Object.entries(x.cons || {}).map(([k, v]) => `${k.slice(4)}/${k.slice(2, 4)}: ${fmt(v)}`).join(' · ');
-  return `<div class="note okk"><b>✓ En ficha</b> (por ${m.via.join(', ')}) · ${esc(x.direccion)}<br>Medidor ficha: ${esc(x.medidor || 'SIN MEDIDOR')} ${esc(x.marca)} · ${esc(x.clase)}${x.carga != null ? ' · carga aforada ' + x.carga : ''}${cons ? '<br>Consumos kWh: ' + cons : ''}</div>` +
+  const x = cd.ficha[m.i], cons = Object.entries(x.cons || {}).sort((p, q) => p[0].localeCompare(q[0])).map(([k, v]) => `<div class="c"><em>${k.slice(4)}/${k.slice(2, 4)}</em><b>${fmt(v)}</b></div>`).join('');
+  return `<div class="fx"><div class="fxh"><span class="fxok">✓ En ficha</span>${x.carga != null ? `<span class="fxc">Carga aforada <b>${x.carga}</b></span>` : ''}</div>${cons ? `<div class="fxl">Consumos (kWh)</div><div class="cons">${cons}</div>` : ''}</div>` +
     (m.conflict ? '<div class="note err">El servicio, la cuenta y el medidor escritos corresponden a clientes distintos de la ficha. Revísalos.</div>' : '') +
     (x.cosecha ? `<div class="note warn">Control en ficha: ${esc(x.cosecha)}</div>` : '') + (x.reinc ? `<div class="note warn">Reincidencias: ${x.reinc}${x.imputada ? ' · energía imputada ' + fmt(x.imputada) + ' kWh' : ''}</div>` : '') + (!x.medidor ? '<div class="note warn">La ficha no tiene medidor para este cliente.</div>' : '');
 }
