@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.8.0';
+const VER = '1.8.1';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -39,12 +39,12 @@ const dbPutKV = (k, v) => tx('kv', 'readwrite', s => s.put(v, k));
 // ---------- configuración y catálogos ----------
 const ACTIVIDADES = ['RESIDENCIAL', 'COMERCIAL', 'INDUSTRIAL', 'OFICIAL', 'OTRO'];
 const KVA = ['5', '10', '15', '25', '30', '37.5', '45', '50', '75', '100', '112.5', '150', '225', '300'];
-const HZ_CD = ['SIN HALLAZGOS', 'FUGA VISIBLE DE ACEITE DEL TRANSFORMADOR', 'CUBA DEL TRANSFORMADOR CON CORROSIÓN VISIBLE', 'AISLADOR O BOQUILLA DEL TRANSFORMADOR FISURADO, ROTO O DESPRENDIDO', 'BORNE O CONEXIÓN CON SOBRECALENTAMIENTO', 'SIN SISTEMA DE PUESTA A TIERRA', 'PUESTA A TIERRA MAL INSTALADA O CON CONEXIÓN DEFICIENTE', 'CONDUCTOR DE PUESTA A TIERRA INTERRUMPIDO O SUELTO', 'SIN DPS', 'DPS EN MAL ESTADO', 'CORTACIRCUITO SIN PORTAFUSIBLE', 'PORTAFUSIBLE EN MAL ESTADO', 'CORTACIRCUITO O PROTECCIÓN CON DAÑO VISIBLE', 'POSTE DESAPLOMADO (INCLINACIÓN VISIBLE)'];
+const HZ_CD = ['Sin hallazgos', 'Aislador o boquilla del transformador fisurado, roto o desprendido', 'Borne o conexión con sobrecalentamiento', 'Conductor de puesta a tierra interrumpido o suelto', 'Cortacircuito o protección con daño visible', 'Cortacircuito sin portafusible', 'Cuba del transformador con corrosión visible', 'DPS en mal estado', 'Fuga visible de aceite del transformador', 'Portafusible en mal estado', 'Poste desaplomado (inclinación visible)', 'Puesta a tierra mal instalada o con conexión deficiente', 'Sin DPS', 'Sin sistema de puesta a tierra'];
 const PLACAS = ['LA PLACA CORRESPONDE CON EL ROTULO DE LA OT', 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT', 'NO TIENE PLACA VISIBLE'];
 const OTRA = 'OTRA (ESCRIBIR)', SINMED = 'SIN MEDIDOR', HOTRO = 'OTRO (DESCRIBIR EN OBSERVACIÓN)';
-const HALLAZGOS = ['SIN HALLAZGO', 'MEDIDOR SIN SELLOS / SELLOS VIOLADOS', 'MEDIDOR MANIPULADO O ALTERADO', 'MEDIDOR DETENIDO O SIN REGISTRO', 'MEDIDOR CON LECTURA INCONSISTENTE', 'MEDIDOR NO CORRESPONDE A LA CUENTA (CRUCE)', 'CONEXIÓN DIRECTA (SIN MEDIDOR)', 'PUENTE O BYPASS EN LA MEDIDA', 'DERIVACIÓN CLANDESTINA EN LA RED', 'ACOMETIDA EN MAL ESTADO (PÉRDIDA TÉCNICA)', 'EMPALMES O CONEXIONES FLOJAS / SULFATADAS', 'CARGA NO REGISTRADA / USO DIFERENTE AL CONTRATADO', 'CLIENTE CONECTADO A OTRO TRANSFORMADOR', 'CLIENTE NO UBICADO / DIRECCIÓN NO CORRESPONDE', 'SERVICIO SUSPENDIDO CON ENERGÍA', 'NO PERMITE INSPECCIÓN / SIN ACCESO A LA MEDIDA', 'PREDIO DESOCUPADO O DEMOLIDO', HOTRO];
+const HALLAZGOS = ['Sin hallazgo', 'Acometida en mal estado (pérdida técnica)', 'Uso diferente al contratado', 'Cliente mal vinculado', 'Cliente no ubicado / dirección no corresponde', 'Servicio directo (sin medidor)', 'Servicio directo (con medidor)', 'Empalmes o conexiones flojas / sulfatadas', 'Medidor con lectura inconsistente', 'Medidor no registra', 'Display apagado', 'Medidor manipulado o alterado', 'Medidor no corresponde a la cuenta (cruce)', 'Medidor sin sellos / sellos violados', 'Sin acceso a la medida', 'Predio desocupado o demolido', 'Puente o bypass en la medida', 'Servicio suspendido con energía'];
 const MATERIALES = ['NO PERDURABLE', 'PERDURABLE'];
-const HALLAZGOS_UNC = ['ACOMETIDA EN MAL ESTADO (PÉRDIDA TÉCNICA)', 'CARGA COMUNITARIA O ALUMBRADO SIN MEDIDA', 'CONEXIÓN DIRECTA A LA RED (SIN MEDIDOR)', 'DERIVACIÓN CLANDESTINA EN LA RED', 'EMPALMES O CONEXIONES FLOJAS / SULFATADAS', 'PREDIO CON CONEXIÓN Y SIN CONTRATO', 'PREDIO DESOCUPADO O DEMOLIDO', 'USO COMERCIAL O INDUSTRIAL SIN MEDIDOR', HOTRO];
+const HALLAZGOS_UNC = ['Predio con servicio directo monofásico', 'Predio con servicio directo bifásico', 'Predio con servicio directo trifásico', 'Sin instalación externa', 'Instalación externa no conforme', 'Instalación externa cumple norma técnica', 'Se requiere redes para suministrar a UNC', 'Predio habitable sin servicio directo'];
 // Marcas: las que trae la ficha del Excel (CLIENTES.marca_medidor) + las que se escriban con "OTRA"
 const MARCAS_BASE = ['@METER', 'ABB', 'ACTARIS', 'AEG', 'ALDANA', 'CAR-1', 'CDM', 'CHINT', 'COMCORE', 'COMPLANT', 'ELGAMA', 'ELSTER', 'ENEL', 'ESTROM', 'GALILEO', 'GAUGETECH', 'GOMELONG', 'HEXCELL', 'HEXING', 'HIKING', 'HOLLEY', 'INHEMETER', 'ISKRA', 'ITRON', 'KRIZIK', 'LANDIS', 'METCOM', 'MICROSTAR', 'NANSEN', 'NINGBO', 'OSAKI', 'PAFAL', 'SCHLUMBERGER', 'SCORPION', 'SIEMENS', 'SKAITEKS', 'SUMMETER', 'SUNRISE', 'TECUN', 'TR-CEICA/ME-WINSKY', 'WASION', 'WINSKY'];
 const CORTO = {"AGUIAR OLIVERA EDUVINO": "Eduvino Aguiar", "ARDILA AMADO ELKIN": "Elkin Ardila", "BABILONIA THOMAS FERNANDO LUIS": "Fernando Babilonia", "BAEZ JUAN CARLOS": "Juan Baez", "CAÑON GONZALEZ RICARDO IGNACIO": "Ricardo Cañon", "CARDENAS GOMEZ RAMIRO": "Ramiro Cardenas", "CASTAÑEDA MINZON HERNAN": "Minzon Castañeda", "DAZA MORENO DUBAN STIVEN": "Duban Daza", "DIAZ RODRIGUEZ NELSON FERNANDO": "Nelson Diaz", "FERNANDEZ SALAS JOHAN SEBASTIAN": "Johan Fernandez", "FONSECA SANTANA WILLIAM GIUSEPPE": "William Fonseca", "GALINDO TORRES HELVER MARTIN": "Helver Galindo", "GONZALEZ CIFUENTES SOFIA LORENA": "Sofia Gonzalez", "GUERRERO RODRIGUEZ KEVIN CAMILO": "Kevin Guerrero", "GUEVARA PÉREZ ANTONY": "Antony Guevara", "IZQUIERDO MURCIA CARLOS EDUARDO": "Carlos Izquierdo", "JIMENEZ CASTILLO OSCAR FERNANDO": "Oscar Jimenez", "LOPEZ SUAREZ RICARDO ENRIQUE": "Ricardo Lopez", "OLIVERO ROCHA IVAN DAVID": "Ivan Olivero", "PERDOMO RAMIREZ CRISTIAN DAVID": "Cristian Perdomo", "PEREZ PIRA RIVEL ESTEBAN": "Rivel Perez", "PINEDA AGUILAR WILKER DE JESUS": "Wilker Pineda", "PINZON TOVAR BRAYAN FELIPE": "Brayan Pinzon", "PORRAS RODRIGUEZ BRIAM STEVENS": "Briam Porras", "QUIJANO CARDOSO JOHN JAIRO": "John Quijano", "RAMIREZ CEPEDA BRAYAN HERNAN": "Brayan Ramirez", "RAMIREZ BARAHONA FERNEY": "Ferney Ramirez", "REYES HERNANDEZ SEBASTIAN DAVID": "Sebastian Reyes", "ROBAYO BOHORQUEZ CARLOS ENRIQUE": "Carlos Robayo", "ROJAS CRUZ KEVIN YESSITH": "Kevin Rojas", "ROMERO JOHN FREDY": "John Romero", "ROMERO SERNA LUIS CAMILO": "Luis Romero", "RONCANCIO RINCON FABIAN ANDRES": "Fabian Roncancio", "SUAREZ CADENA CARLOS FELIPE": "Carlos Suarez", "TIQUE TIQUE YECID": "Yecid Tique", "VERGARA MANRIQUE VICTOR HERNAN": "Victor Vergara", "AMAYA TRIANA LUIS ALEJANDRO": "Luis Amaya", "TRIANA SOLER JOHN ALEXANDER": "John Triana", "BUITRAGO CUESTA JONATHAN ALEXIS": "Jonathan Buitrago", "ACOSTA JUAN CARLOS": "Juan Acosta", "PEREZ ROA JOSE ALFREDO": "Jose Perez", "HERNANDEZ SILVA JHON EDWAR": "Jhon Hernandez", "DIAZ CATILLA CARLOS ALBERTO": "Carlos Diaz", "QUEMBA CAROLINA": "Carolina Quemba", "CASTELLANOS KILLY SEBASTIAN": "Killy Castellanos", "PADILLA ALISON": "Alison Padilla", "BARRAGAN BARRERA ANA MARIA": "Ana Barragan", "VALBUENA LOZANO BRAYAN DAVID": "Brayan Valbuena", "ORTIZ RODRIGUEZ CARLOS FELIPE": "Carlos Ortiz", "RAMIREZ MARTINEZ MIGUEL ALEJANDRO": "Miguel Ramirez", "VARGAS ROMERO JAIRO ANDRES": "Jairo Vargas", "HEIDI YURISSA DIAZ SANABRIA": "Heidi Diaz"};
@@ -164,7 +164,7 @@ async function exportarJSON(cd) {
 
 // ---------- utilidades de interfaz ----------
 let toastT; function toast(msg, ms = 2600) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms); }
-const alfa = list => { const fin = o => o === OTRA || o === SINMED || o === HOTRO; return [...list.filter(o => !fin(o))].sort((x, y) => String(x).localeCompare(String(y), 'es', { numeric: true, sensitivity: 'base' })).concat(list.filter(fin)); };
+const alfa = list => { const fin = o => o === OTRA || o === SINMED || o === HOTRO; return list.filter(o => o === 'Sin hallazgo').concat([...list.filter(o => !fin(o) && o !== 'Sin hallazgo')].sort((x, y) => String(x).localeCompare(String(y), 'es', { numeric: true, sensitivity: 'base' }))).concat(list.filter(fin)); };
 const opts = (list, sel, ph) => (ph != null ? `<option value="">${esc(ph)}</option>` : '') + alfa(list).map(o => `<option value="${esc(o)}"${o === sel ? ' selected' : ''}>${esc(o)}</option>`).join('');
 const ICO = { home: '<path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-5h4v5"/>', back: '<path d="M15 5l-7 7 7 7"/>', list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>', plus: '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>', pin: '<path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>', sum: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 15v-3M12 15V9M16 15v-5"/>', user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>', mic: '<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>' };
 const ic = k => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICO[k]}</svg>`;
@@ -244,7 +244,7 @@ function listHTML(cd) {
     const title = unc ? 'Usuario no cliente' : `Med. ${esc(med || '—')}`;
     const dir = x.direccion || rr.direccion || '';
     const extra = it.f && (it.f.cosecha || !it.f.medidor) ? `<span style="color:var(--warn)">${esc(it.f.cosecha || 'Sin medidor en ficha')}</span>` : '';
-    const hz = rr.hallazgo && rr.hallazgo !== 'SIN HALLAZGO' ? '⚠ ' + esc(rr.hallazgo) : '';
+    const hz = rr.hallazgo && rr.hallazgo !== 'Sin hallazgo' ? '⚠ ' + esc(rr.hallazgo) : '';
     const clase = it.f && it.f.clase ? it.f.clase.charAt(0) + it.f.clase.slice(1).toLowerCase() : '';
     const l1 = unc ? '' : [marca ? esc(marca) : '', clase ? esc(clase) : '', extra, hz].filter(Boolean).join(' · ');
     const l2 = unc ? hz : `Serv. ${esc(x.servicio || '—')} · Cta. ${esc(x.cuenta || '—')}`;
@@ -253,7 +253,7 @@ function listHTML(cd) {
   }).join('') + (out.length > 400 ? '<div class="note">Mostrando 400; usa el buscador para acotar.</div>' : '');
 }
 
-function newForm(tipo = 'CLIENTE') { return { id: null, tipo, servicio: '', cuenta: '', medidor: '', marca: '', marcaOtra: '', lectura: '', actividad: '', pertenece: null, hallazgo: tipo === 'UNC' ? '' : 'SIN HALLAZGO', obs: '', direccion: '', lat: null, lon: null, prec: null, tecnico: cfg.usuario || '', cdReal: '', otReal: '', capReal: '', material: '' }; }
+function newForm(tipo = 'CLIENTE') { return { id: null, tipo, servicio: '', cuenta: '', medidor: '', marca: '', marcaOtra: '', lectura: '', actividad: '', pertenece: null, hallazgo: tipo === 'UNC' ? '' : 'Sin hallazgo', obs: '', direccion: '', lat: null, lon: null, prec: null, tecnico: cfg.usuario || '', cdReal: '', otReal: '', capReal: '', material: '' }; }
 function formFromRec(r) {
   const f = Object.assign(newForm(r.tipo), JSON.parse(JSON.stringify(r)));
   const lista = [...marcasList(), SINMED]; f.marcaOtra = ''; if (f.marca && !lista.includes(f.marca)) { f.marcaOtra = f.marca; f.marca = OTRA; }
@@ -301,8 +301,8 @@ function geoHTML(f) {
 // resumen ---------------------------------------------------
 function setupOk(cd) { return !!(otOk(cd.ot) && cd.placa && (cd.placa !== PLACA_NO || (cd.placaReal || '').trim()) && cd.capacidad && cd.hallazgosCD && cd.hallazgosCD.length); }
 function hzHTML(cd) {
-  const sel = cd.hallazgosCD || [], rest = alfa(HZ_CD.filter(h => h !== 'SIN HALLAZGOS' && h !== 'SIN HALLAZGOS'));
-  const lista = ['SIN HALLAZGOS', ...rest];
+  const sel = cd.hallazgosCD || [], rest = alfa(HZ_CD.filter(h => h !== 'Sin hallazgos'));
+  const lista = ['Sin hallazgos', ...rest];
   const txt = !sel.length ? 'Selecciona…' : sel.length === 1 ? sel[0] : `${sel.length} hallazgos seleccionados`;
   return `<details class="ms"${S.hzOpen ? ' open' : ''}><summary><span>${esc(txt)}</span></summary>
     <div class="msl">${lista.map(h => `<button type="button" class="mso${sel.includes(h) ? ' on' : ''}" data-act="hz" data-v="${esc(h)}"><i></i><span>${esc(h)}</span></button>`).join('')}</div></details>`;
@@ -311,14 +311,14 @@ function hzAdd(cd, v) {
   let a = cd.hallazgosCD = cd.hallazgosCD || [];
   const i = a.indexOf(v);
   if (i >= 0) a.splice(i, 1);
-  else if (v === 'SIN HALLAZGOS') a.length = 0, a.push(v);
-  else { const k = a.indexOf('SIN HALLAZGOS'); if (k >= 0) a.splice(k, 1); a.push(v); }
-  if (!a.length) a.push('SIN HALLAZGOS');
+  else if (v === 'Sin hallazgos') a.length = 0, a.push(v);
+  else { const k = a.indexOf('Sin hallazgos'); if (k >= 0) a.splice(k, 1); a.push(v); }
+  if (!a.length) a.push('Sin hallazgos');
   S.hzOpen = true;
   return saveCD(cd).then(() => { const b = $('#hzbox'); if (b) b.innerHTML = hzHTML(cd); const bs = $('#btnSetup'); if (bs) bs.disabled = !setupOk(cd); });
 }
 function cdFields(cd) {
-  if (!cd.setup && !(cd.hallazgosCD || []).length) cd.hallazgosCD = ['SIN HALLAZGOS'];
+  if (!cd.setup && !(cd.hallazgosCD || []).length) cd.hallazgosCD = ['Sin hallazgos'];
   if (!cd.capacidad && cd.meta.potencia != null && KVA.includes(String(cd.meta.potencia))) cd.capacidad = String(cd.meta.potencia);
   return `<div class="fld"><label class="req">Verificación de la placa</label><select data-cdf="placa">${opts(PLACAS, cd.placa, 'Selecciona…')}</select></div>
     <div class="fld${cd.placa === PLACA_NO ? '' : ' hidden'}" data-show="placaReal"><label class="req">Rótulo real del transformador</label><input type="text" data-cdf="placaReal" value="${esc(cd.placaReal || '')}" placeholder="XXXXTRX" style="text-transform:uppercase" autocomplete="off"></div>
