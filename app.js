@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.10.12';
+const VER = '1.10.13';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -60,6 +60,7 @@ const saveCfg = () => dbPutKV('cfg', cfg);
 // ---------- estado ----------
 const S = { view: 'home', tab: 'lista', cds: {}, cur: null, q: '', flt: 'todos', form: null, from: 'reg', pos: null, sel: null, _autoI: null };
 const curCD = () => S.cur ? S.cds[S.cur] : null;
+const DR = () => (S._dr && S._dr.cd === S.cur ? S._dr : (S._dr = { cd: S.cur }));
 const saveCD = cd => dbPutCD(cd);
 
 // ---------- lectura del Excel -> CD ----------
@@ -533,9 +534,10 @@ async function guardar() {
 function abrirFicha(i) {
   const cd = curCD(), fi = cd.ficha[i], ex = stats(cd).reg.get(i);
   if (ex) return abrirReg(ex.id);
+  { const D = DR(), df = D.ficha; if (df && df.form.tipo === 'CLIENTE' && !df.form.id && matchFicha(cd, df.form).i === i) { D.ficha = null; S.form = df.form; S.from = df.from; S._autoI = null; S.tab = 'reg'; return render(); } }
   S.form = newForm('CLIENTE'); S._autoI = null; S.form.servicio = fi.servicio; S.form.cuenta = fi.cuenta; S.form.medidor = fi.medidor; S.from = 'lista'; S.tab = 'reg'; render();
 }
-function abrirReg(id, from = 'lista') { const r = curCD().registros.find(x => x.id === id); if (!r) return; S.form = formFromRec(r); S.form.creado = r.creado; S.form.fecha = r.fecha; S._autoI = null; S.from = from; S.tab = 'reg'; render(); }
+function abrirReg(id, from = 'lista') { const r = curCD().registros.find(x => x.id === id); if (!r) return; const D = DR(); if (D.ficha && D.ficha.form.id === id) { const df = D.ficha; D.ficha = null; S.form = df.form; S.from = df.from; S._autoI = null; S.tab = 'reg'; return render(); } S.form = formFromRec(r); S.form.creado = r.creado; S.form.fecha = r.fecha; S._autoI = null; S.from = from; S.tab = 'reg'; render(); }
 
 // ---------- GPS ----------
 function geoStop(usar) {
@@ -592,10 +594,12 @@ document.addEventListener('click', async ev => {
   if (t.dataset.rf) { S.rf = t.dataset.rf; return render(); }
   const cd = curCD();
   if (t.dataset.tab) {
-    if (S.tab === 'reg' && S.geo) geoStop(false); const k = t.dataset.tab;
-    if (k === 'unc') { if (!(S.form && S.form.tipo === 'UNC')) S.form = newForm('UNC'); S.tab = 'reg'; S.from = 'reg'; S._autoI = null; return render(); }
-    if (k === 'reg' && S.form && (S.form.tipo === 'UNC' || (S.from !== 'reg' && S.form.pertenece !== false))) { S.form = newForm(); S._autoI = null; }
-    S.tab = k; if (k === 'reg') S.from = 'reg'; return render();
+    if (S.tab === 'reg' && S.geo) geoStop(false); const k = t.dataset.tab, D = DR();
+    const keepNo = k === 'reg' && S.tab === 'reg' && S.form && S.from !== 'reg' && S.form.tipo === 'CLIENTE' && S.form.pertenece === false;
+    if (S.tab === 'reg' && S.form && !keepNo) { const fm = S.form; if (fm.tipo === 'UNC') D.unc = fm; else if (S.from === 'reg') D.otros = fm; else D.ficha = { form: fm, from: S.from }; }
+    if (k === 'unc') { S.form = D.unc || newForm('UNC'); D.unc = null; S.tab = 'reg'; S.from = 'reg'; S._autoI = null; return render(); }
+    if (k === 'reg') { if (!keepNo) { S.form = D.otros || newForm(); D.otros = null; } S.tab = 'reg'; S.from = 'reg'; S._autoI = null; return render(); }
+    S.tab = k; return render();
   }
   if (t.dataset.flt) { S.flt = t.dataset.flt; return render(); }
   const sg = t.closest('[data-seg]');
@@ -607,7 +611,7 @@ document.addEventListener('click', async ev => {
   switch (t.dataset.act) {
     case 'cambiar-usuario': cfg.usuario = ''; await saveCfg(); return render();
     case 'cargar': if (!otOk(S.ot0)) return toast(`La OT debe tener ${OT_LEN} dígitos`); return $('#fx').click();
-    case 'home': if (S.geo) geoStop(false); S.view = 'home'; S.cur = null; S.edSetup = false; return render();
+    case 'home': S._dr = null; if (S.geo) geoStop(false); S.view = 'home'; S.cur = null; S.edSetup = false; return render();
     case 'setup': if (S.geo) geoStop(false); S.edSetup = true; return render();
     case 'open-cd': S.cur = t.dataset.id; S.view = 'cd'; S.tab = 'lista'; S.q = ''; S.flt = 'todos'; S.form = newForm(); S.from = 'reg'; return render();
     case 'nuevo': S.form = newForm(); S.from = 'reg'; S._autoI = null; S.tab = 'reg'; return render();
