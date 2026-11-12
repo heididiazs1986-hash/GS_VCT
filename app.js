@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.10.14';
+const VER = '1.10.15';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -69,7 +69,8 @@ function sheetObjs(rows) {
   const keys = [], seen = new Set();
   for (let i = 0; i < rows[h].length; i++) { const k = norm(rows[h][i]); if (k && !seen.has(k)) { seen.add(k); keys[i] = k; } }
   const out = [];
-  for (let i = h + 1; i < rows.length; i++) { const r = rows[i]; if (!r || !r.some(c => c != null && c !== '')) continue; const o = {}; keys.forEach((k, j) => { if (k) o[k] = r[j]; }); out.push(o); }
+  for (let i = h + 1; i < rows.length; i++) { const r = rows[i]; if (!r || !r.some(c => c != null && c !== '')) continue; const o = {}; keys.forEach((k, j) => { if (k) o[k] = r[j]; }); Object.defineProperty(o, '__raw', { value: r.slice(), enumerable: false }); out.push(o); }
+  out.cols = rows[h].map((c, i) => ({ i, label: String(c ?? '').trim() })).filter(c => c.label);
   return out;
 }
 function buildCDs(wb) {
@@ -83,15 +84,16 @@ function buildCDs(wb) {
   return ids.map(id => {
     const b = bl.filter(o => rawId(o.cd) === id).sort((x, y) => String(y.periodo).localeCompare(String(x.periodo)));
     const b0 = b[0] || {}; const c0 = fixCoord(b0.latitud, b0.longitud);
+    const fichaCols = (() => { const seen = {}; return cl.cols.map(c => { let l = c.label.toUpperCase(); seen[l] = (seen[l] || 0) + 1; return seen[l] > 1 ? l + '_' + seen[l] : l; }); })();
     const ficha = cl.filter(o => rawId(o.cd) === id).map(o => {
       const co = fixCoord(o.lat, o.lon); const cons = {}; for (const k in o) if (/^20\d{4}$/.test(k) && o[k] != null) cons[k] = num(o[k]);
-      return { servicio: rawId(o.nro_servicio), cuenta: rawId(o.nro_cuenta), direccion: String(o.direccion ?? '').trim(), medidor: rawId(o.nro_medidor), marca: String(o.marca_medidor ?? '').trim().toUpperCase(), periodoUlt: rawId(o.periodo_ultima_lectura), ultimaLectura: num(o.ultima_lectura), facturacion: String(o.facturacion ?? '').trim(), carga: num(o.carga_aforada), lat: co.lat, lon: co.lon, clase: String(o.clase_servicio ?? '').trim().toUpperCase(), cosecha: String(o.cosecha ?? '').trim(), reinc: num(o.reincidencias) || 0, imputada: num(o.energia_imputada) || 0, cons };
+      return { servicio: rawId(o.nro_servicio), cuenta: rawId(o.nro_cuenta), direccion: String(o.direccion ?? '').trim(), medidor: rawId(o.nro_medidor), marca: String(o.marca_medidor ?? '').trim().toUpperCase(), periodoUlt: rawId(o.periodo_ultima_lectura), ultimaLectura: num(o.ultima_lectura), facturacion: String(o.facturacion ?? '').trim(), carga: num(o.carga_aforada), lat: co.lat, lon: co.lon, clase: String(o.clase_servicio ?? '').trim().toUpperCase(), cosecha: String(o.cosecha ?? '').trim(), reinc: num(o.reincidencias) || 0, imputada: num(o.energia_imputada) || 0, cons, raw: cl.cols.map(c => { const v = o.__raw[c.i]; return v == null || v === '' ? null : v; }) };
     });
     return {
       id, creado: new Date().toISOString(), ot: '', placa: '', capacidad: '', hallazgosCD: [], setup: false, placaReal: '', exportadoEn: null,
       meta: { circuito: String(b0.circuito ?? '').trim(), codCircuito: String(b0.cod_circuito ?? '').trim(), potencia: num(b0.potencia_kva), tipoRed: String(b0.tipo_red ?? '').trim(), direccion: String(b0.direccion ?? '').trim(), lat: c0.lat, lon: c0.lon, cantClientes: num(b0.cant_clientes), tecnologia: String(b0.tecnologia_macro ?? '').trim() },
       balances: b.map(o => ({ periodo: rawId(o.periodo), entradas: num(o.entradas), salidas: num(o.salidas), perdidas: num(o.perdidas), indice: num(o.indice) })),
-      ficha, registros: []
+      ficha, fichaCols, registros: []
     };
   });
 }
@@ -145,9 +147,11 @@ function buildSheets(cd) {
     { name: '2_VINCULADO_OTRO_CD', table: 'tblVinculadoOtroCD', columns: dc(COLS), rows: rows[2].map(dc), widths: dc(WIDTHS) },
     { name: '3_UNC', table: 'tblUNC', columns: du(dc(COLS.slice(0, -5))), rows: rows[3].map(r => du(dc(r.slice(0, -5)))), widths: du(dc(WIDTHS.slice(0, -5))) },
     { name: '4_PARA_VINCULAR', table: 'tblParaVincular', columns: dc(COLS.slice(0, -5)), rows: rows[4].map(r => dc(r.slice(0, -5))), widths: dc(WIDTHS.slice(0, -5)) },
-    { name: '5_FICHA_NO_VERIFICADA', table: 'tblFichaNoVerificada', columns: ['CD', 'OT', 'NRO_SERVICIO', 'NRO_CUENTA', 'NRO_MEDIDOR', 'MARCA_MEDIDOR', 'CLASE_SERVICIO', 'DIRECCION', 'LATITUD', 'LONGITUD', 'ULTIMA_LECTURA', 'PERIODO_ULTIMA_LECTURA', 'CARGA_AFORADA', 'FACTURACION', 'CONTROL_EN_FICHA', 'REINCIDENCIAS', 'ENERGIA_IMPUTADA_KWH'],
-      rows: cd.ficha.map((x, i) => reg5.has(i) ? null : [cd.id, cd.ot || '', x.servicio || '', x.cuenta || '', x.medidor || '', x.marca || '', x.clase || '', x.direccion || '', x.lat, x.lon, x.ultimaLectura, x.periodoUlt || '', x.carga, x.facturacion || '', x.cosecha || '', x.reinc || 0, x.imputada || 0]).filter(Boolean).map(dc0),
-      widths: [11, 12, 14, 12, 14, 13, 16, 34, 12, 12, 14, 14, 13, 14, 22, 13, 14] }
+    (cd.fichaCols && cd.ficha.every(x => x.raw))
+      ? { name: '5_FICHA_NO_VERIFICADA', table: 'tblFichaNoVerificada', columns: cd.fichaCols, rows: cd.ficha.map((x, i) => reg5.has(i) ? null : x.raw).filter(Boolean).map(dc0), widths: cd.fichaCols.map(c => /DIRECCION/.test(c) ? 34 : 14) }
+      : { name: '5_FICHA_NO_VERIFICADA', table: 'tblFichaNoVerificada', columns: ['CD', 'NRO_SERVICIO', 'NRO_CUENTA', 'DIRECCION', 'NRO_MEDIDOR', 'MARCA_MEDIDOR', 'PERIODO_ULTIMA_LECTURA', 'FACTURACION', 'CARGA_AFORADA', 'LON', 'LAT', 'ENERGIA_IMPUTADA', 'REINCIDENCIAS', 'CLASE_SERVICIO', 'COSECHA', 'ULTIMA_LECTURA'],
+        rows: cd.ficha.map((x, i) => reg5.has(i) ? null : [cd.id, x.servicio || '', x.cuenta || '', x.direccion || '', x.medidor || '', x.marca || '', x.periodoUlt || '', x.facturacion || '', x.carga, x.lon, x.lat, x.imputada || 0, x.reinc || 0, x.clase || '', x.cosecha || '', x.ultimaLectura]).filter(Boolean).map(dc0),
+        widths: [11, 14, 12, 34, 14, 13, 14, 14, 13, 12, 12, 14, 13, 16, 22, 14] }
   ];
 }
 const mkBlob = (data, type) => new Blob([data], { type });
