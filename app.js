@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.10.6';
+const VER = '1.10.7';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -133,7 +133,7 @@ function buildSheets(cd) {
     const m = r.tipo === 'CLIENTE' ? matchFicha(cd, r) : { i: null }, c0 = clasif(cd, r, m); if (c0 == null) return; const c = c0 === 0 ? 2 : c0 === 3 ? (r.tipo === 'UNC' ? 3 : 4) : c0;
     const f = m.i != null ? cd.ficha[m.i] : null;
     const dif = f && f.medidor && r.medidor && idn(f.medidor) !== idn(r.medidor) ? 'SI' : (f ? 'NO' : '');
-    rows[c].push([r.id, cd.id, cd.ot || '', r.fecha || '', r.tecnico || '', r.tipo === 'UNC' ? 'UNC' : 'CLIENTE', r.tipo === 'UNC' ? 'USUARIO NO CLIENTE (UNC)' : CL[c0].t, r.servicio || '', r.cuenta || '', r.medidor || '', r.marca || '', num(r.lectura), f ? f.clase || '' : r.actividad || '', r.tipo === 'UNC' ? r.material || '' : '', r.direccion || (f ? f.direccion : ''), r.lat, r.lon, r.prec == null ? null : Math.round(r.prec * 10) / 10, r.hallazgo || '', r.obs || '', cd.placa || '', cd.placa === PLACA_NO ? cd.placaReal || '' : '', cd.capacidad || '', (cd.hallazgosCD || []).join(' | '), c === 2 ? r.cdReal || '' : '', c === 2 ? r.capReal || '' : '', c === 2 ? r.otReal || '' : '', f ? f.medidor : '', f ? f.marca : '', dif, f ? r.actividad || '' : '', f && f.clase && r.actividad ? (f.clase === r.actividad ? 'NO' : 'SI') : '']);
+    rows[c].push([r.id, cd.id, cd.ot || '', r.fecha || '', r.tecnico || '', r.tipo === 'UNC' ? 'UNC' : 'CLIENTE', r.tipo === 'UNC' ? 'USUARIO NO CLIENTE (UNC)' : CL[c0].t, r.servicio || '', r.cuenta || '', r.medidor || '', r.marca || '', num(r.lectura), f ? f.clase || '' : r.actividad || '', r.tipo === 'UNC' ? r.material || '' : '', r.direccion || (f ? f.direccion : ''), r.lat, r.lon, r.prec == null ? null : Math.round(r.prec * 10) / 10, r.hallazgo || '', r.obs || '', cd.placa || '', cd.placa === PLACA_NO ? cd.placaReal || '' : '', cd.capacidad || '', (cd.hallazgosCD || []).join(' / '), c === 2 ? r.cdReal || '' : '', c === 2 ? r.capReal || '' : '', c === 2 ? r.otReal || '' : '', f ? f.medidor : '', f ? f.marca : '', dif, f ? r.actividad || '' : '', f && f.clase && r.actividad ? (f.clase === r.actividad ? 'NO' : 'SI') : '']);
   });
   const ixCl = ['CLASIFICACION', 'TIPO_USUARIO'].map(c => COLS.indexOf(c)), dc = arr => arr.filter((_, i) => !ixCl.includes(i)).map(v => typeof v === 'string' ? v.toUpperCase() : v);
   return [
