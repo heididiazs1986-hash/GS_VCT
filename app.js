@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.9.0';
+const VER = '1.9.1';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -193,10 +193,10 @@ function header() {
   const cd = curCD();
   if (S.view === 'home') return `<header><div class="brand">${LOGO}<div><h1>GS VCT</h1>${cfg.usuario ? '' : '<small>Vínculo Cliente – Transformador</small>'}</div></div>${cfg.usuario ? `<div class="ib who" style="cursor:default"><span>${esc(corto(cfg.usuario))}</span>${ic('user')}</div>` : ''}</header>`;
   const st = stats(cd);
-  return `<header class="cdh"><button class="ib" data-act="home" aria-label="Volver">${ic('back')}</button><div class="brand"><div><h1>${esc(cd.id)}</h1><small>${esc(corto(cfg.usuario))} · ${esc(cd.meta.circuito)}${cd.meta.potencia ? ' · ' + cd.meta.potencia + ' kVA' : ''}${cd.meta.tipoRed ? ' · ' + esc(cd.meta.tipoRed) : ''}</small></div></div><div class="prog">${st.visit}/${st.total}</div></header>`;
+  return `<header class="cdh"><button class="ib" data-act="${cd.setup && !S.edSetup ? 'setup' : 'home'}" aria-label="Volver">${ic('back')}</button><div class="brand"><div><h1>${esc(cd.id)}</h1><small>${esc(corto(cfg.usuario))} · ${esc(cd.meta.circuito)}${cd.meta.potencia ? ' · ' + cd.meta.potencia + ' kVA' : ''}${cd.meta.tipoRed ? ' · ' + esc(cd.meta.tipoRed) : ''}</small></div></div><div class="prog">${st.visit}/${st.total}</div></header>`;
 }
 function nav() {
-  if (S.view !== 'cd' || !curCD() || !curCD().setup) return '';
+  if (S.view !== 'cd' || !curCD() || !curCD().setup || S.edSetup) return '';
   const isU = S.form && S.form.tipo === 'UNC', t = [['lista', ic('list'), 'Ficha'], ['reg', ic('plus'), 'Otros clientes'], ['unc', ic('home'), 'UNC'], ['res', ic('sum'), 'Resumen']];
   const fromL = S.tab === 'reg' && !isU && S.from === 'lista', on = k => k === 'reg' ? S.tab === 'reg' && !isU && !fromL : k === 'unc' ? S.tab === 'reg' && isU : k === 'lista' ? S.tab === 'lista' || fromL : S.tab === k;
   return `<nav class="bottom">${t.map(([k, i, l]) => `<button data-tab="${k}" class="${on(k) ? 'on' : ''}">${i}${l}</button>`).join('')}</nav>`;
@@ -379,11 +379,11 @@ function viewRes(cd) {
 function render() {
   const cd = curCD(); let body = '';
   if (S.view === 'home') body = viewHome();
-  else if (cd && !cd.setup) body = viewSetup(cd);
+  else if (cd && (!cd.setup || S.edSetup)) body = viewSetup(cd);
   else if (cd) body = S.tab === 'lista' ? viewLista(cd) : S.tab === 'reg' ? viewReg(cd) : viewRes(cd);
   const key = S.view + ':' + S.tab + (S.tab === 'reg' && S.form ? S.form.tipo : '') + ':' + (cfg.usuario ? 1 : 0) + ':' + (S.cur || ''), cambio = key !== S._key; S._key = key;
   $('#root').innerHTML = header() + `<main${cambio ? ' class="enter"' : ''}>${body}</main>` + nav();
-  if (S.view === 'cd' && S.tab === 'reg') { updateDerived(); }
+  if (S.view === 'cd' && S.tab === 'reg' && cd && cd.setup && !S.edSetup) { updateDerived(); }
   window.scrollTo(0, 0);
   if (S.view === 'cd' && S.tab === 'lista') { const el = $('.it.sel'); if (el) el.scrollIntoView({ block: 'center' }); }
 }
@@ -532,7 +532,8 @@ document.addEventListener('click', async ev => {
   switch (t.dataset.act) {
     case 'cambiar-usuario': cfg.usuario = ''; await saveCfg(); return render();
     case 'cargar': if (!otOk(S.ot0)) return toast(`La OT debe tener ${OT_LEN} dígitos`); return $('#fx').click();
-    case 'home': if (S.geo) geoStop(false); S.view = 'home'; S.cur = null; return render();
+    case 'home': if (S.geo) geoStop(false); S.view = 'home'; S.cur = null; S.edSetup = false; return render();
+    case 'setup': if (S.geo) geoStop(false); S.edSetup = true; return render();
     case 'open-cd': S.cur = t.dataset.id; S.view = 'cd'; S.tab = 'lista'; S.q = ''; S.flt = 'todos'; S.form = newForm(); S.from = 'reg'; return render();
     case 'nuevo': S.form = newForm(); S.from = 'reg'; S._autoI = null; S.tab = 'reg'; return render();
     case 'open-ficha': S.hl = 'f' + t.dataset.i; return abrirFicha(+t.dataset.i);
@@ -543,7 +544,7 @@ document.addEventListener('click', async ev => {
     case 'geo': return geoStart();
     case 'dictar': return dictar();
     case 'hz': return hzAdd(cd, t.dataset.v);
-    case 'setup-ok': if (!setupOk(cd)) return toast('Completa placa, capacidad y hallazgos'); cd.setup = true; await saveCD(cd); S.tab = 'lista'; return render();
+    case 'setup-ok': if (!setupOk(cd)) return toast('Completa placa, capacidad y hallazgos'); const prim = !cd.setup; cd.setup = true; S.edSetup = false; await saveCD(cd); if (prim) S.tab = 'lista'; return render();
     case 'xlsx': return exportarExcel(cd, false);
     case 'xlsx-share': return exportarExcel(cd, true);
     case 'json': return exportarJSON(cd);
