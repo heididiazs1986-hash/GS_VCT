@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.10.0';
+const VER = '1.10.1';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -377,7 +377,6 @@ function buildObs(cd) {
   const hzt = (cd.hallazgosCD || []).map(U).filter(h => h && h !== 'SIN HALLAZGOS');
   const placaTxt = cd.placa === PLACA_NO ? `LA PLACA NO CORRESPONDE CON EL RÓTULO DE LA OT${cd.placaReal ? ' (RÓTULO REAL: ' + U(cd.placaReal) + ')' : ''}` : cd.placa === PLACAS[2] ? 'EL TRANSFORMADOR NO TIENE PLACA VISIBLE' : cd.placa ? 'LA PLACA CORRESPONDE CON EL RÓTULO DE LA OT' : '';
   const p = [`INST.BT.BARR.VCT ORDEN PARA VINCULACIÓN DE CUENTAS AL CD: ${cd.id}, EJECUTAR ACTUALIZACIÓN DEL VÍNCULO CLIENTE-TRANSFORMADOR Y ACTUALIZACIÓN DE ACTIVIDAD ECONÓMICA DE CLIENTES DE ACUERDO CON FICHA ENTREGADA.`,
-    cd.meta.circuito || cd.meta.tipoRed ? `${cd.meta.circuito ? 'CIRCUITO: ' + U(cd.meta.circuito) + '. ' : ''}${cd.meta.tipoRed ? 'RED ' + U(cd.meta.tipoRed) + '.' : ''}`.trim() : '',
     placaTxt ? placaTxt + '.' : '', cd.capacidad ? `CAPACIDAD DEL TRANSFORMADOR: ${cd.capacidad} kVA.` : '',
     hzt.length ? `HALLAZGOS DEL TRANSFORMADOR: ${hzt.join(', ')}.` : 'SIN HALLAZGOS EN EL TRANSFORMADOR.',
     `SE VERIFICAN ${st.visit} DE ${st.total} CLIENTES DE LA FICHA${st.pend ? ` (${st.pend} SIN VISITAR)` : ''}.`,
