@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.9.2';
+const VER = '1.9.3';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -364,7 +364,7 @@ function viewRes(cd) {
   if (!otOk(cd.ot)) warns.push(`La OT del CD debe tener ${OT_LEN} dígitos.`); if (!setupOk(cd)) warns.push('Faltan datos del CD (placa, capacidad o hallazgos).');
   const sinOT = cd.registros.filter(r => [0, 2].includes(clasif(cd, r)) && !otOk(r.otReal)).length; if (sinOT) warns.push(`${sinOT} cliente(s) de otro circuito sin OT: se piden al exportar.`);
   if (s.pend) warns.push(`Quedan ${s.pend} clientes de la ficha sin registrar.`);
-  return `<div class="card"><h2>Datos del CD</h2><div class="fld"><label class="req">N° de OT</label><input type="text" ${otAtt} data-cdf="ot" value="${esc(cd.ot)}" autocomplete="off"></div>${cdFields(cd)}</div>
+  return `
     <div class="card"><h2>Avance</h2><div class="kpis"><div class="kpi"><b>${s.visit}/${s.total}</b><span>Ficha visitada</span></div><div class="kpi"><b>${s.pend}</b><span>Pendientes</span></div></div>
     <div class="kpis k2" style="margin-top:10px"><div class="kpi"><b style="color:var(--ok)">${s.t1}</b><span>En ficha, de este CD</span></div><div class="kpi"><b style="color:var(--bad)">${s.t2}</b><span>En ficha, de otro CD</span></div><div class="kpi"><b style="color:var(--new)">${s.t3}</b><span>UNC</span></div><div class="kpi"><b style="color:var(--new)">${s.t4}</b><span>No en ficha, vinculados</span></div></div>
     ${warns.map(w => `<div class="note warn">${esc(w)}</div>`).join('')}</div>
