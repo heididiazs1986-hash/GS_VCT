@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.10.1';
+const VER = '1.10.2';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -477,6 +477,7 @@ function validar(cd, f, m) {
 }
 function setIfEmpty(k, v) { const f = S.form; if (v && !f[k]) { f[k] = v; const el = $(`[data-f="${k}"]`); if (el) el.value = v; } }
 function updateDerived() {
+  if (!$('#errs')) return;
   const cd = curCD(), f = S.form; if (!cd || !f || S.tab !== 'reg') return;
   const unc = f.tipo === 'UNC'; let m = { i: null };
   if (!unc) m = matchFicha(cd, f);
@@ -627,7 +628,7 @@ document.addEventListener('input', ev => {
   if (el.dataset.newot !== undefined) { el.value = el.value.replace(/\D/g, '').slice(0, OT_LEN); return; }
   if (el.dataset.obs) { cd.obsEd = cd.obsEd || {}; cd.obsEd[el.dataset.obs] = el.value; clearTimeout(S._obsT); S._obsT = setTimeout(() => saveCD(cd), 600); return; }
   if (el.id === 'q') { S.q = el.value; $('#lst').innerHTML = listHTML(cd); return; }
-  if (el.dataset.cdf) { if (el.dataset.cdf === 'ot') el.value = el.value.replace(/\D/g, '').slice(0, OT_LEN); if (el.dataset.cdf === 'placaReal') el.value = el.value.toUpperCase(); cd[el.dataset.cdf] = el.value.trim(); saveCD(cd); const bs0 = $('#btnSetup'); if (bs0) bs0.disabled = !setupOk(cd); if (S.tab === 'reg') updateDerived(); return; }
+  if (el.dataset.cdf) { if (el.dataset.cdf === 'ot') el.value = el.value.replace(/\D/g, '').slice(0, OT_LEN); if (el.dataset.cdf === 'placaReal') el.value = el.value.toUpperCase(); cd[el.dataset.cdf] = el.value.trim(); saveCD(cd); const bs0 = $('#btnSetup'); if (bs0) bs0.disabled = !setupOk(cd); if (S.tab === 'reg' && cd.setup && !S.edSetup) updateDerived(); return; }
   const k = el.dataset.f; if (!k || !S.form) return;
   if (k === 'otReal') el.value = el.value.replace(/\D/g, '').slice(0, OT_LEN);
   if (['obs', 'direccion', 'marcaOtra', 'cdReal', 'otReal'].includes(k)) { const p = el.selectionStart; el.value = el.value.toUpperCase(); try { el.setSelectionRange(p, p); } catch { } }
