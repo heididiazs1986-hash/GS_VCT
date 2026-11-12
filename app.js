@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.10.10';
+const VER = '1.10.11';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -42,8 +42,8 @@ const KVA = ['5', '10', '15', '25', '30', '37.5', '45', '50', '75', '100', '112.
 const HZ_CD = ['Sin hallazgos', 'Aislador o boquilla del transformador fisurado, roto o desprendido', 'Borne o conexión con sobrecalentamiento', 'Conductor de puesta a tierra interrumpido o suelto', 'Cortacircuito o protección con daño visible', 'Cortacircuito sin portafusible', 'Cuba del transformador con corrosión visible', 'DPS en mal estado', 'Fuga visible de aceite del transformador', 'Portafusible en mal estado', 'Poste desaplomado (inclinación visible)', 'Puesta a tierra mal instalada o con conexión deficiente', 'Sin DPS', 'Sin sistema de puesta a tierra'];
 const PLACAS = ['LA PLACA CORRESPONDE CON EL ROTULO DE LA OT', 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT', 'NO TIENE PLACA VISIBLE'];
 const OTRA = 'OTRA (ESCRIBIR)', SINMED = 'SIN MEDIDOR', HOTRO = 'OTRO (DESCRIBIR EN OBSERVACIÓN)';
-const LECT_BAJA = 'Lectura menor a la última registrada';
-const HALLAZGOS = ['Sin hallazgo', LECT_BAJA, 'Acometida en mal estado (pérdida técnica)', 'Uso diferente al contratado', 'Cliente mal vinculado', 'Cliente no ubicado / dirección no corresponde', 'Servicio directo (sin medidor)', 'Servicio directo (con medidor)', 'Empalmes o conexiones flojas / sulfatadas', 'Medidor con lectura inconsistente', 'Medidor no registra', 'Display apagado', 'Medidor manipulado o alterado', 'Medidor no corresponde a la cuenta (cruce)', 'Medidor sin sellos / sellos violados', 'Sin acceso a la medida', 'Predio desocupado o demolido', 'Puente o bypass en la medida', 'Servicio suspendido con energía'];
+const LECT_BAJA = 'Lectura menor a la última registrada', SIN_SIS = 'Medidor no registrado en sistema';
+const HALLAZGOS = ['Sin hallazgo', LECT_BAJA, SIN_SIS, 'Acometida en mal estado (pérdida técnica)', 'Uso diferente al contratado', 'Cliente mal vinculado', 'Cliente no ubicado / dirección no corresponde', 'Servicio directo (sin medidor)', 'Servicio directo (con medidor)', 'Empalmes o conexiones flojas / sulfatadas', 'Medidor con lectura inconsistente', 'Medidor no registra', 'Display apagado', 'Medidor manipulado o alterado', 'Medidor no corresponde a la cuenta (cruce)', 'Medidor sin sellos / sellos violados', 'Sin acceso a la medida', 'Predio desocupado o demolido', 'Puente o bypass en la medida', 'Servicio suspendido con energía'];
 const MATERIALES = ['NO PERDURABLE', 'PERDURABLE'];
 const HALLAZGOS_UNC = ['Predio con servicio directo monofásico', 'Predio con servicio directo bifásico', 'Predio con servicio directo trifásico', 'Sin instalación externa', 'Instalación externa no conforme', 'Instalación externa cumple norma técnica', 'Se requiere redes para suministrar a UNC', 'Predio habitable sin servicio directo'];
 // Marcas: las que trae la ficha del Excel (CLIENTES.marca_medidor) + las que se escriban con "OTRA"
@@ -267,7 +267,7 @@ function listHTML(cd) {
   }).join('') + (out.length > 400 ? '<div class="note">Mostrando 400; usa el buscador para acotar.</div>' : '');
 }
 
-function newForm(tipo = 'CLIENTE') { return { id: null, tipo, servicio: '', cuenta: '', medidor: '', marca: '', marcaOtra: '', lectura: '', actividad: '', pertenece: null, hallazgo: tipo === 'UNC' ? '' : 'Sin hallazgo', obs: '', direccion: '', lat: null, lon: null, prec: null, tecnico: cfg.usuario || '', cdReal: '', otReal: '', capReal: '', material: '' }; }
+function newForm(tipo = 'CLIENTE') { return { id: null, tipo, servicio: '', cuenta: '', medidor: '', marca: '', marcaOtra: '', lectura: '', actividad: '', pertenece: null, hallazgo: tipo === 'UNC' ? '' : 'Sin hallazgo', obs: '', sinSis: false, direccion: '', lat: null, lon: null, prec: null, tecnico: cfg.usuario || '', cdReal: '', otReal: '', capReal: '', material: '' }; }
 function formFromRec(r) {
   const f = Object.assign(newForm(r.tipo), JSON.parse(JSON.stringify(r)));
   const lista = [...marcasList(), SINMED]; f.marcaOtra = ''; if (f.marca && !lista.includes(f.marca)) { f.marcaOtra = f.marca; f.marca = OTRA; }
@@ -276,8 +276,9 @@ function formFromRec(r) {
 function viewReg(cd) {
   const f = S.form || (S.form = newForm()), unc = f.tipo === 'UNC';
   const m0 = unc ? { i: null } : matchFicha(cd, f);
-  const cli = `<div class="fld"><label class="req">N° de servicio eléctrico</label><input type="text" inputmode="numeric" data-f="servicio" value="${esc(f.servicio)}" autocomplete="off"></div>
-      <div class="fld"><label class="req">N° de cuenta</label><input type="text" inputmode="numeric" data-f="cuenta" value="${esc(f.cuenta)}" autocomplete="off"></div>
+  const cli = `<div class="fld ${m0.i != null ? 'hidden' : ''}" data-show="sinsis"><button type="button" class="btn full${f.sinSis ? ' sel' : ''}" id="btnSinSis" data-act="sinsis" aria-pressed="${!!f.sinSis}">${f.sinSis ? '✓ ' : ''}${SIN_SIS}</button></div>
+      <div class="fld ${f.sinSis ? 'hidden' : ''}" data-show="svc"><label class="req">N° de servicio eléctrico</label><input type="text" inputmode="numeric" data-f="servicio" value="${esc(f.servicio)}" autocomplete="off"></div>
+      <div class="fld ${f.sinSis ? 'hidden' : ''}" data-show="svc"><label class="req">N° de cuenta</label><input type="text" inputmode="numeric" data-f="cuenta" value="${esc(f.cuenta)}" autocomplete="off"></div>
       <div class="fld"><label class="req">N° de medidor</label><input type="text" inputmode="text" data-f="medidor" value="${esc(f.medidor)}" autocomplete="off"></div>
       <div id="matchCard"></div>
       <div class="fld"><label class="req">Marca del medidor</label><select data-f="marca">${opts([...marcasList(), SINMED, OTRA], f.marca, 'Selecciona…')}</select></div>
@@ -364,7 +365,7 @@ function revisarFuera(cd) {
 }
 
 // ---------- observaciones para el acta (Forcebeat) ----------
-const hzList = r => { const a = []; if (r.hallazgo && r.hallazgo !== 'Sin hallazgo') a.push(r.hallazgo); if (r.lectBaja && !a.includes(LECT_BAJA)) a.push(LECT_BAJA); return a; };
+const hzList = r => { const a = []; if (r.hallazgo && r.hallazgo !== 'Sin hallazgo') a.push(r.hallazgo); if (r.lectBaja && !a.includes(LECT_BAJA)) a.push(LECT_BAJA); if (r.sinSis && !a.includes(SIN_SIS)) a.push(SIN_SIS); return a; };
 const U = v => String(v ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
 function resumenHz(rs) {
   const m = new Map(); rs.forEach(r => hzList(r).forEach(x => { const h = U(x); if (h) m.set(h, (m.get(h) || 0) + 1); }));
@@ -463,7 +464,7 @@ function validar(cd, f, m) {
   const e = [], unc = f.tipo === 'UNC';
   if (!otOk(cd.ot)) e.push(`OT del CD (${OT_LEN} dígitos)`);
   if (!unc) {
-    if (!f.servicio.trim()) e.push('N° de servicio'); if (!f.cuenta.trim()) e.push('N° de cuenta');
+    if (!f.sinSis) { if (!f.servicio.trim()) e.push('N° de servicio'); if (!f.cuenta.trim()) e.push('N° de cuenta'); }
     if (!f.marca) e.push('Marca del medidor'); else if (f.marca === OTRA && !f.marcaOtra.trim()) e.push('Escribe la marca');
     if (f.marca !== SINMED) { if (!f.medidor.trim()) e.push('N° de medidor'); if (f.lectura === '' || num(f.lectura) == null) e.push('Lectura de energía activa'); }
     if (f.pertenece == null) e.push('¿Cliente vinculado a este CD? (SÍ / NO)');
@@ -474,7 +475,7 @@ function validar(cd, f, m) {
   if (!f.hallazgo) e.push('Hallazgo técnico'); else if (f.hallazgo === HOTRO && !f.obs.trim()) e.push('Describe el hallazgo en la observación');
   // duplicados
   if (!f.id && !unc) {
-    const dup = cd.registros.find(r => r.tipo === 'CLIENTE' && ((idn(f.servicio) && idn(r.servicio) === idn(f.servicio)) || (idn(f.cuenta) && idn(r.cuenta) === idn(f.cuenta)) || (m.i != null && matchFicha(cd, r).i === m.i)));
+    const dup = cd.registros.find(r => r.tipo === 'CLIENTE' && ((idn(f.servicio) && idn(r.servicio) === idn(f.servicio)) || (idn(f.cuenta) && idn(r.cuenta) === idn(f.cuenta)) || (f.sinSis && idn(f.medidor) && idn(r.medidor) === idn(f.medidor)) || (m.i != null && matchFicha(cd, r).i === m.i)));
     if (dup) { S.dup = dup.id; e.push('Este cliente ya está registrado'); } else S.dup = null;
   }
   return e;
@@ -493,7 +494,9 @@ function updateDerived() {
   if (m.i == null) S._autoI = null;
   // mostrar/ocultar
   const sh = (k, on) => { const el = $(`[data-show="${k}"]`); if (el) el.classList.toggle('hidden', !on); };
-  sh('pert', m.i != null);
+  if (m.i != null && f.sinSis) { f.sinSis = false; if (f.hallazgo === SIN_SIS) { f.hallazgo = 'Sin hallazgo'; const hs0 = $('[data-f="hallazgo"]'); if (hs0) hs0.value = f.hallazgo; } }
+  sh('pert', m.i != null); sh('sinsis', m.i == null); document.querySelectorAll('[data-show="svc"]').forEach(el => el.classList.toggle('hidden', !!f.sinSis));
+  { const hs = $('[data-f="hallazgo"]'); if (f.sinSis && (!f.hallazgo || f.hallazgo === 'Sin hallazgo')) { f.hallazgo = SIN_SIS; if (hs) hs.value = SIN_SIS; } else if (!f.sinSis && f.hallazgo === SIN_SIS) { f.hallazgo = 'Sin hallazgo'; if (hs) hs.value = f.hallazgo; } const bt = $('#btnSinSis'); if (bt) { bt.classList.toggle('sel', !!f.sinSis); bt.textContent = (f.sinSis ? '✓ ' : '') + SIN_SIS; bt.setAttribute('aria-pressed', !!f.sinSis); } }
   if (!unc) { if (m.i == null && f.pertenece !== true) { f.pertenece = true; f._auto = true; } else if (m.i != null && f._auto) { f.pertenece = null; f._auto = false; document.querySelectorAll('[data-seg="pertenece"] button').forEach(b => b.classList.remove('on', 'no')); } }
   sh('otra', f.marca === OTRA); sh('lect', f.marca !== SINMED);
   // tarjeta de coincidencia
@@ -522,7 +525,7 @@ async function guardar() {
   const cd = curCD(), f = S.form, unc = f.tipo === 'UNC', m = unc ? { i: null } : matchFicha(cd, f), errs = validar(cd, f, m);
   if (errs.length) return toast('Pendiente: ' + errs[0]);
   const marca = unc ? '' : marcaFinal(f); if (marca && f.marca === OTRA && !marcasList().includes(marca)) { (cfg.marcasExtra = cfg.marcasExtra || []).push(marca); await saveCfg(); }
-  const rec = { id: f.id || uid(), tipo: f.tipo, servicio: unc ? '' : f.servicio.trim(), cuenta: unc ? '' : f.cuenta.trim(), medidor: unc || f.marca === SINMED ? '' : f.medidor.trim(), marca: unc ? '' : marca, lectura: unc || f.marca === SINMED ? null : num(f.lectura), actividad: f.actividad, material: unc ? f.material : '', pertenece: unc ? true : f.pertenece, hallazgo: f.hallazgo, lectBaja: !!(!unc && f.marca !== SINMED && m.i != null && cd.ficha[m.i].ultimaLectura != null && num(f.lectura) != null && num(f.lectura) < cd.ficha[m.i].ultimaLectura), obs: f.obs.trim().toUpperCase(), direccion: f.direccion.trim().toUpperCase(), lat: unc ? f.lat : null, lon: unc ? f.lon : null, prec: unc ? f.prec : null,  cdReal: !unc && f.pertenece === false ? normCd(f.cdReal) : '', capReal: !unc && f.pertenece === false ? f.capReal : '', otReal: !unc && f.pertenece === false ? f.otReal.trim().toUpperCase() : '', tecnico: f.tecnico || cfg.usuario, fecha: f.fecha || stamp(), creado: f.creado || new Date().toISOString(), editado: new Date().toISOString() };
+  const rec = { id: f.id || uid(), tipo: f.tipo, servicio: unc || f.sinSis ? '' : f.servicio.trim(), cuenta: unc || f.sinSis ? '' : f.cuenta.trim(), sinSis: !unc && !!f.sinSis, medidor: unc || f.marca === SINMED ? '' : f.medidor.trim(), marca: unc ? '' : marca, lectura: unc || f.marca === SINMED ? null : num(f.lectura), actividad: f.actividad, material: unc ? f.material : '', pertenece: unc ? true : f.pertenece, hallazgo: f.hallazgo, lectBaja: !!(!unc && f.marca !== SINMED && m.i != null && cd.ficha[m.i].ultimaLectura != null && num(f.lectura) != null && num(f.lectura) < cd.ficha[m.i].ultimaLectura), obs: f.obs.trim().toUpperCase(), direccion: f.direccion.trim().toUpperCase(), lat: unc ? f.lat : null, lon: unc ? f.lon : null, prec: unc ? f.prec : null,  cdReal: !unc && f.pertenece === false ? normCd(f.cdReal) : '', capReal: !unc && f.pertenece === false ? f.capReal : '', otReal: !unc && f.pertenece === false ? f.otReal.trim().toUpperCase() : '', tecnico: f.tecnico || cfg.usuario, fecha: f.fecha || stamp(), creado: f.creado || new Date().toISOString(), editado: new Date().toISOString() };
   const i = cd.registros.findIndex(r => r.id === rec.id); if (i >= 0) cd.registros[i] = rec; else cd.registros.push(rec);
   await saveCD(cd);
   toast('✓ Registro guardado'); const back = S.from; S.form = newForm(unc ? 'UNC' : 'CLIENTE'); S._autoI = null; S.from = 'reg'; S.tab = back === 'lista' ? 'lista' : back === 'regs' ? 'regs' : 'reg'; render();
@@ -617,6 +620,7 @@ document.addEventListener('click', async ev => {
     case 'cancelar': if (S.geo) geoStop(false); S.form = newForm(S.form.tipo); S._autoI = null; if (S.from === 'lista') { S.tab = 'lista'; S.from = 'reg'; } return render();
     case 'guardar': return guardar();
     case 'borrar-reg': if (confirm('¿Eliminar este registro?')) { cd.registros = cd.registros.filter(r => r.id !== S.form.id); await saveCD(cd); const bk = S.from; S.form = newForm(); S.tab = bk === 'regs' ? 'regs' : 'lista'; toast('Registro eliminado'); render(); } return;
+    case 'sinsis': { const f = S.form; f.sinSis = !f.sinSis; if (f.sinSis) { f.servicio = ''; f.cuenta = ''; document.querySelectorAll('[data-f="servicio"],[data-f="cuenta"]').forEach(i => i.value = ''); } return updateDerived(); }
     case 'geo': return geoStart();
     case 'dictar': return dictar();
     case 'hz': return hzAdd(cd, t.dataset.v);
