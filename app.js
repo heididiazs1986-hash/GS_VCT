@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.10.7';
+const VER = '1.10.8';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -42,7 +42,8 @@ const KVA = ['5', '10', '15', '25', '30', '37.5', '45', '50', '75', '100', '112.
 const HZ_CD = ['Sin hallazgos', 'Aislador o boquilla del transformador fisurado, roto o desprendido', 'Borne o conexión con sobrecalentamiento', 'Conductor de puesta a tierra interrumpido o suelto', 'Cortacircuito o protección con daño visible', 'Cortacircuito sin portafusible', 'Cuba del transformador con corrosión visible', 'DPS en mal estado', 'Fuga visible de aceite del transformador', 'Portafusible en mal estado', 'Poste desaplomado (inclinación visible)', 'Puesta a tierra mal instalada o con conexión deficiente', 'Sin DPS', 'Sin sistema de puesta a tierra'];
 const PLACAS = ['LA PLACA CORRESPONDE CON EL ROTULO DE LA OT', 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT', 'NO TIENE PLACA VISIBLE'];
 const OTRA = 'OTRA (ESCRIBIR)', SINMED = 'SIN MEDIDOR', HOTRO = 'OTRO (DESCRIBIR EN OBSERVACIÓN)';
-const HALLAZGOS = ['Sin hallazgo', 'Acometida en mal estado (pérdida técnica)', 'Uso diferente al contratado', 'Cliente mal vinculado', 'Cliente no ubicado / dirección no corresponde', 'Servicio directo (sin medidor)', 'Servicio directo (con medidor)', 'Empalmes o conexiones flojas / sulfatadas', 'Medidor con lectura inconsistente', 'Medidor no registra', 'Display apagado', 'Medidor manipulado o alterado', 'Medidor no corresponde a la cuenta (cruce)', 'Medidor sin sellos / sellos violados', 'Sin acceso a la medida', 'Predio desocupado o demolido', 'Puente o bypass en la medida', 'Servicio suspendido con energía'];
+const LECT_BAJA = 'Lectura menor a la última registrada';
+const HALLAZGOS = ['Sin hallazgo', LECT_BAJA, 'Acometida en mal estado (pérdida técnica)', 'Uso diferente al contratado', 'Cliente mal vinculado', 'Cliente no ubicado / dirección no corresponde', 'Servicio directo (sin medidor)', 'Servicio directo (con medidor)', 'Empalmes o conexiones flojas / sulfatadas', 'Medidor con lectura inconsistente', 'Medidor no registra', 'Display apagado', 'Medidor manipulado o alterado', 'Medidor no corresponde a la cuenta (cruce)', 'Medidor sin sellos / sellos violados', 'Sin acceso a la medida', 'Predio desocupado o demolido', 'Puente o bypass en la medida', 'Servicio suspendido con energía'];
 const MATERIALES = ['NO PERDURABLE', 'PERDURABLE'];
 const HALLAZGOS_UNC = ['Predio con servicio directo monofásico', 'Predio con servicio directo bifásico', 'Predio con servicio directo trifásico', 'Sin instalación externa', 'Instalación externa no conforme', 'Instalación externa cumple norma técnica', 'Se requiere redes para suministrar a UNC', 'Predio habitable sin servicio directo'];
 // Marcas: las que trae la ficha del Excel (CLIENTES.marca_medidor) + las que se escriban con "OTRA"
@@ -133,7 +134,7 @@ function buildSheets(cd) {
     const m = r.tipo === 'CLIENTE' ? matchFicha(cd, r) : { i: null }, c0 = clasif(cd, r, m); if (c0 == null) return; const c = c0 === 0 ? 2 : c0 === 3 ? (r.tipo === 'UNC' ? 3 : 4) : c0;
     const f = m.i != null ? cd.ficha[m.i] : null;
     const dif = f && f.medidor && r.medidor && idn(f.medidor) !== idn(r.medidor) ? 'SI' : (f ? 'NO' : '');
-    rows[c].push([r.id, cd.id, cd.ot || '', r.fecha || '', r.tecnico || '', r.tipo === 'UNC' ? 'UNC' : 'CLIENTE', r.tipo === 'UNC' ? 'USUARIO NO CLIENTE (UNC)' : CL[c0].t, r.servicio || '', r.cuenta || '', r.medidor || '', r.marca || '', num(r.lectura), f ? f.clase || '' : r.actividad || '', r.tipo === 'UNC' ? r.material || '' : '', r.direccion || (f ? f.direccion : ''), r.lat, r.lon, r.prec == null ? null : Math.round(r.prec * 10) / 10, r.hallazgo || '', r.obs || '', cd.placa || '', cd.placa === PLACA_NO ? cd.placaReal || '' : '', cd.capacidad || '', (cd.hallazgosCD || []).join(' / '), c === 2 ? r.cdReal || '' : '', c === 2 ? r.capReal || '' : '', c === 2 ? r.otReal || '' : '', f ? f.medidor : '', f ? f.marca : '', dif, f ? r.actividad || '' : '', f && f.clase && r.actividad ? (f.clase === r.actividad ? 'NO' : 'SI') : '']);
+    rows[c].push([r.id, cd.id, cd.ot || '', r.fecha || '', r.tecnico || '', r.tipo === 'UNC' ? 'UNC' : 'CLIENTE', r.tipo === 'UNC' ? 'USUARIO NO CLIENTE (UNC)' : CL[c0].t, r.servicio || '', r.cuenta || '', r.medidor || '', r.marca || '', num(r.lectura), f ? f.clase || '' : r.actividad || '', r.tipo === 'UNC' ? r.material || '' : '', r.direccion || (f ? f.direccion : ''), r.lat, r.lon, r.prec == null ? null : Math.round(r.prec * 10) / 10, hzList(r).join(' / ') || r.hallazgo || '', r.obs || '', cd.placa || '', cd.placa === PLACA_NO ? cd.placaReal || '' : '', cd.capacidad || '', (cd.hallazgosCD || []).join(' / '), c === 2 ? r.cdReal || '' : '', c === 2 ? r.capReal || '' : '', c === 2 ? r.otReal || '' : '', f ? f.medidor : '', f ? f.marca : '', dif, f ? r.actividad || '' : '', f && f.clase && r.actividad ? (f.clase === r.actividad ? 'NO' : 'SI') : '']);
   });
   const ixCl = ['CLASIFICACION', 'TIPO_USUARIO'].map(c => COLS.indexOf(c)), dc = arr => arr.filter((_, i) => !ixCl.includes(i)).map(v => typeof v === 'string' ? v.toUpperCase() : v);
   return [
@@ -256,7 +257,7 @@ function listHTML(cd) {
     const title = unc ? 'Usuario no cliente' : `Med. ${esc(med || '—')}`;
     const dir = x.direccion || rr.direccion || '';
     const extra = it.f && (it.f.cosecha || !it.f.medidor) ? `<span style="color:var(--warn)">${esc(it.f.cosecha || 'Sin medidor en ficha')}</span>` : '';
-    const hz = rr.hallazgo && rr.hallazgo !== 'Sin hallazgo' ? '⚠ ' + esc(rr.hallazgo) : '';
+    const hz = hzList(rr).length ? '⚠ ' + esc(hzList(rr).join(' / ')) : '';
     const clase = it.f && it.f.clase ? it.f.clase.charAt(0) + it.f.clase.slice(1).toLowerCase() : '';
     const l1 = unc ? '' : [marca ? esc(marca) : '', clase ? esc(clase) : '', extra, hz].filter(Boolean).join(' · ');
     const l2 = unc ? hz : `Serv. ${esc(x.servicio || '—')} · Cta. ${esc(x.cuenta || '—')}`;
@@ -362,9 +363,10 @@ function revisarFuera(cd) {
 }
 
 // ---------- observaciones para el acta (Forcebeat) ----------
+const hzList = r => { const a = []; if (r.hallazgo && r.hallazgo !== 'Sin hallazgo') a.push(r.hallazgo); if (r.lectBaja && !a.includes(LECT_BAJA)) a.push(LECT_BAJA); return a; };
 const U = v => String(v ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
 function resumenHz(rs) {
-  const m = new Map(); rs.forEach(r => { const h = U(r.hallazgo); if (h && h !== 'SIN HALLAZGO') m.set(h, (m.get(h) || 0) + 1); });
+  const m = new Map(); rs.forEach(r => hzList(r).forEach(x => { const h = U(x); if (h) m.set(h, (m.get(h) || 0) + 1); }));
   return [...m].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'es')).map(([h, n]) => `${n} ${h}`).join('; ');
 }
 function buildObs(cd) {
@@ -417,7 +419,7 @@ function viewRegs(cd) {
   const card = it => { const r = it.r, unc = r.tipo === 'UNC', c = it.c;
     const chip = unc ? badge('unc', 'UNC') : badge(CL[c] ? CL[c].c : 'none', c === 1 ? 'Del circuito ✓' : c === 2 || c === 0 ? (otOk(r.otReal) ? 'Otro circuito ✓' : 'Otro circuito · falta OT') : c === 3 ? 'No en ficha' : 'Sin clasificar');
     const l1 = unc ? '' : [r.marca, r.actividad ? r.actividad.charAt(0) + r.actividad.slice(1).toLowerCase() : ''].filter(Boolean).map(esc).join(' · ');
-    const hz = r.hallazgo && r.hallazgo !== 'Sin hallazgo' ? '⚠ ' + esc(r.hallazgo) : esc(r.hallazgo || '');
+    const hz = hzList(r).length ? '⚠ ' + esc(hzList(r).join(' / ')) : esc(r.hallazgo || '');
     const l2 = unc ? esc(r.material ? r.material.charAt(0) + r.material.slice(1).toLowerCase() : '') : `Serv. ${esc(r.servicio || '—')} · Cta. ${esc(r.cuenta || '—')}`;
     const dir = r.direccion || (it.x && it.x.direccion) || '';
     const otro = (c === 2 || c === 0) && r.cdReal ? `CD ${esc(normCd(r.cdReal))}${r.otReal ? ' · OT ' + esc(r.otReal) : ''}` : '';
@@ -501,7 +503,8 @@ function updateDerived() {
   const c = clasif(cd, f, m); const clEl = $('#clasif'); if (clEl) clEl.innerHTML = c == null || (c === 3 && !unc) ? '' : badge(CL[c].c, CL[c].t) + '';
   sh('otro', c === 2 || c === 0);
   // lectura vs última
-  const lh = $('#lectHint'); if (lh) { const fi = m.i != null ? cd.ficha[m.i] : null, v = num(f.lectura); const baja = fi && fi.ultimaLectura != null && v != null && v < fi.ultimaLectura; lh.innerHTML = fi && fi.ultimaLectura != null ? `<div class="lect${baja ? ' bad' : ''}"><span>Última lectura en ficha<b>${fmt(fi.ultimaLectura)} kWh</b><em>periodo ${esc(fi.periodoUlt)}</em></span>${baja ? '<strong>Menor a la última: revisa</strong>' : ''}</div>` : ''; }
+  const lh = $('#lectHint'); if (lh) { const fi = m.i != null ? cd.ficha[m.i] : null, v = num(f.lectura); const baja = !!(fi && fi.ultimaLectura != null && v != null && v < fi.ultimaLectura);
+    { const hs = $('[data-f="hallazgo"]'); if (baja && (!f.hallazgo || f.hallazgo === 'Sin hallazgo')) { f.hallazgo = LECT_BAJA; if (hs) hs.value = LECT_BAJA; } else if (!baja && f.hallazgo === LECT_BAJA) { f.hallazgo = 'Sin hallazgo'; if (hs) hs.value = 'Sin hallazgo'; } } lh.innerHTML = fi && fi.ultimaLectura != null ? `<div class="lect${baja ? ' bad' : ''}"><span>Última lectura en ficha<b>${fmt(fi.ultimaLectura)} kWh</b><em>periodo ${esc(fi.periodoUlt)}</em></span>${baja ? '<strong>Menor a la última: revisa</strong>' : ''}</div>` : ''; }
   // errores
   const errs = validar(cd, f, m); $('#errs').innerHTML = errs.length ? `<div class="note warn"><b>Pendiente:</b> ${errs.map(esc).join(' · ')}${S.dup && errs.includes('Este cliente ya está registrado') ? ` <button class="btn sm" data-act="open-reg" data-id="${esc(S.dup)}">Abrir el existente</button>` : ''}</div>` : '';
   $('#btnSave').disabled = errs.length > 0;
@@ -518,7 +521,7 @@ async function guardar() {
   const cd = curCD(), f = S.form, unc = f.tipo === 'UNC', m = unc ? { i: null } : matchFicha(cd, f), errs = validar(cd, f, m);
   if (errs.length) return toast('Pendiente: ' + errs[0]);
   const marca = unc ? '' : marcaFinal(f); if (marca && f.marca === OTRA && !marcasList().includes(marca)) { (cfg.marcasExtra = cfg.marcasExtra || []).push(marca); await saveCfg(); }
-  const rec = { id: f.id || uid(), tipo: f.tipo, servicio: unc ? '' : f.servicio.trim(), cuenta: unc ? '' : f.cuenta.trim(), medidor: unc || f.marca === SINMED ? '' : f.medidor.trim(), marca: unc ? '' : marca, lectura: unc || f.marca === SINMED ? null : num(f.lectura), actividad: f.actividad, material: unc ? f.material : '', pertenece: unc ? true : f.pertenece, hallazgo: f.hallazgo, obs: f.obs.trim().toUpperCase(), direccion: f.direccion.trim().toUpperCase(), lat: unc ? f.lat : null, lon: unc ? f.lon : null, prec: unc ? f.prec : null,  cdReal: !unc && f.pertenece === false ? normCd(f.cdReal) : '', capReal: !unc && f.pertenece === false ? f.capReal : '', otReal: !unc && f.pertenece === false ? f.otReal.trim().toUpperCase() : '', tecnico: f.tecnico || cfg.usuario, fecha: f.fecha || stamp(), creado: f.creado || new Date().toISOString(), editado: new Date().toISOString() };
+  const rec = { id: f.id || uid(), tipo: f.tipo, servicio: unc ? '' : f.servicio.trim(), cuenta: unc ? '' : f.cuenta.trim(), medidor: unc || f.marca === SINMED ? '' : f.medidor.trim(), marca: unc ? '' : marca, lectura: unc || f.marca === SINMED ? null : num(f.lectura), actividad: f.actividad, material: unc ? f.material : '', pertenece: unc ? true : f.pertenece, hallazgo: f.hallazgo, lectBaja: !!(!unc && f.marca !== SINMED && m.i != null && cd.ficha[m.i].ultimaLectura != null && num(f.lectura) != null && num(f.lectura) < cd.ficha[m.i].ultimaLectura), obs: f.obs.trim().toUpperCase(), direccion: f.direccion.trim().toUpperCase(), lat: unc ? f.lat : null, lon: unc ? f.lon : null, prec: unc ? f.prec : null,  cdReal: !unc && f.pertenece === false ? normCd(f.cdReal) : '', capReal: !unc && f.pertenece === false ? f.capReal : '', otReal: !unc && f.pertenece === false ? f.otReal.trim().toUpperCase() : '', tecnico: f.tecnico || cfg.usuario, fecha: f.fecha || stamp(), creado: f.creado || new Date().toISOString(), editado: new Date().toISOString() };
   const i = cd.registros.findIndex(r => r.id === rec.id); if (i >= 0) cd.registros[i] = rec; else cd.registros.push(rec);
   await saveCD(cd);
   toast('✓ Registro guardado'); const back = S.from; S.form = newForm(unc ? 'UNC' : 'CLIENTE'); S._autoI = null; S.from = 'reg'; S.tab = back === 'lista' ? 'lista' : back === 'regs' ? 'regs' : 'reg'; render();
