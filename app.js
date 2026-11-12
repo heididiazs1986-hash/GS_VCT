@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.9.3';
+const VER = '1.10.0';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -173,7 +173,7 @@ async function exportarJSON(cd) {
 let toastT; function toast(msg, ms = 2600) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms); }
 const alfa = list => { const fin = o => o === OTRA || o === SINMED || o === HOTRO; return list.filter(o => o === 'Sin hallazgo').concat([...list.filter(o => !fin(o) && o !== 'Sin hallazgo')].sort((x, y) => String(x).localeCompare(String(y), 'es', { numeric: true, sensitivity: 'base' }))).concat(list.filter(fin)); };
 const opts = (list, sel, ph) => (ph != null ? `<option value="">${esc(ph)}</option>` : '') + alfa(list).map(o => `<option value="${esc(o)}"${o === sel ? ' selected' : ''}>${esc(o)}</option>`).join('');
-const ICO = { home: '<path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-5h4v5"/>', back: '<path d="M15 5l-7 7 7 7"/>', list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>', plus: '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>', pin: '<path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>', sum: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 15v-3M12 15V9M16 15v-5"/>', user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>', mic: '<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>' };
+const ICO = { rows: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/>', home: '<path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-5h4v5"/>', back: '<path d="M15 5l-7 7 7 7"/>', list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>', plus: '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>', pin: '<path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>', sum: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 15v-3M12 15V9M16 15v-5"/>', user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>', mic: '<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>' };
 const ic = k => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICO[k]}</svg>`;
 const LOGO = `<svg width="36" height="36" viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="24" fill="#FF6600"/><circle cx="40" cy="46" r="21" fill="none" stroke="#fff" stroke-width="6"/><circle cx="60" cy="46" r="21" fill="none" stroke="#fff" stroke-width="6"/><path d="M8 46h11M81 46h11" stroke="#fff" stroke-width="6" stroke-linecap="round"/><text x="50" y="88" font-size="18" font-weight="800" fill="#fff" text-anchor="middle" font-family="Manrope,Arial,sans-serif">VCT</text></svg>`;
 const FOOT = '<div class="foot">Desarrollado por Heidi Díaz</div>';
@@ -197,8 +197,8 @@ function header() {
 }
 function nav() {
   if (S.view !== 'cd' || !curCD() || !curCD().setup || S.edSetup) return '';
-  const isU = S.form && S.form.tipo === 'UNC', t = [['lista', ic('list'), 'Ficha'], ['reg', ic('plus'), 'Otros clientes'], ['unc', ic('home'), 'UNC'], ['res', ic('sum'), 'Resumen']];
-  const fromL = S.tab === 'reg' && !isU && S.from === 'lista', on = k => k === 'reg' ? S.tab === 'reg' && !isU && !fromL : k === 'unc' ? S.tab === 'reg' && isU : k === 'lista' ? S.tab === 'lista' || fromL : S.tab === k;
+  const isU = S.form && S.form.tipo === 'UNC', t = [['lista', ic('list'), 'Ficha'], ['reg', ic('plus'), 'Otros clientes'], ['unc', ic('home'), 'UNC'], ['regs', ic('rows'), 'Registros'], ['res', ic('sum'), 'Resumen']];
+  const fromL = S.tab === 'reg' && S.from === 'lista' && !isU, fromR = S.tab === 'reg' && S.from === 'regs', on = k => k === 'reg' ? S.tab === 'reg' && !isU && !fromL && !fromR : k === 'unc' ? S.tab === 'reg' && isU && !fromR : k === 'lista' ? S.tab === 'lista' || fromL : k === 'regs' ? S.tab === 'regs' || fromR : S.tab === k;
   return `<nav class="bottom">${t.map(([k, i, l]) => `<button data-tab="${k}" class="${on(k) ? 'on' : ''}">${i}${l}</button>`).join('')}</nav>`;
 }
 function viewHome() {
@@ -359,6 +359,71 @@ function revisarFuera(cd) {
     };
   });
 }
+
+// ---------- observaciones para el acta (Forcebeat) ----------
+const U = v => String(v ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
+function resumenHz(rs) {
+  const m = new Map(); rs.forEach(r => { const h = U(r.hallazgo); if (h && h !== 'SIN HALLAZGO') m.set(h, (m.get(h) || 0) + 1); });
+  return [...m].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'es')).map(([h, n]) => `${n} ${h}`).join('; ');
+}
+function buildObs(cd) {
+  const out = [], regs = cd.registros.map(r => { const m = r.tipo === 'CLIENTE' ? matchFicha(cd, r) : { i: null }; return { r, m, c: clasif(cd, r, m), f: m.i != null ? cd.ficha[m.i] : null }; });
+  const st = stats(cd), otros = regs.filter(x => x.c === 2 || x.c === 0), grupos = new Map();
+  otros.forEach(x => { const cdr = normCd(x.r.cdReal) || 'SIN CD', k = cdr + '|' + (x.r.otReal || ''); if (!grupos.has(k)) grupos.set(k, { cd: cdr, ot: x.r.otReal || '', xs: [] }); grupos.get(k).xs.push(x); });
+  const cdOt = [...grupos.values()].map(g => `${g.ot || 'OT PENDIENTE'} (CD ${g.cd})`);
+  // orden inicial
+  const cli = regs.filter(x => x.r.tipo === 'CLIENTE' && (x.c === 1 || x.c === 3 || x.c === 2 || x.c === 0)), unc = regs.filter(x => x.r.tipo === 'UNC');
+  const dif = regs.filter(x => x.f && x.f.clase && x.r.actividad && U(x.f.clase) !== U(x.r.actividad)).length;
+  const hzt = (cd.hallazgosCD || []).map(U).filter(h => h && h !== 'SIN HALLAZGOS');
+  const placaTxt = cd.placa === PLACA_NO ? `LA PLACA NO CORRESPONDE CON EL RÓTULO DE LA OT${cd.placaReal ? ' (RÓTULO REAL: ' + U(cd.placaReal) + ')' : ''}` : cd.placa === PLACAS[2] ? 'EL TRANSFORMADOR NO TIENE PLACA VISIBLE' : cd.placa ? 'LA PLACA CORRESPONDE CON EL RÓTULO DE LA OT' : '';
+  const p = [`INST.BT.BARR.VCT ORDEN PARA VINCULACIÓN DE CUENTAS AL CD: ${cd.id}, EJECUTAR ACTUALIZACIÓN DEL VÍNCULO CLIENTE-TRANSFORMADOR Y ACTUALIZACIÓN DE ACTIVIDAD ECONÓMICA DE CLIENTES DE ACUERDO CON FICHA ENTREGADA.`,
+    cd.meta.circuito || cd.meta.tipoRed ? `${cd.meta.circuito ? 'CIRCUITO: ' + U(cd.meta.circuito) + '. ' : ''}${cd.meta.tipoRed ? 'RED ' + U(cd.meta.tipoRed) + '.' : ''}`.trim() : '',
+    placaTxt ? placaTxt + '.' : '', cd.capacidad ? `CAPACIDAD DEL TRANSFORMADOR: ${cd.capacidad} kVA.` : '',
+    hzt.length ? `HALLAZGOS DEL TRANSFORMADOR: ${hzt.join(', ')}.` : 'SIN HALLAZGOS EN EL TRANSFORMADOR.',
+    `SE VERIFICAN ${st.visit} DE ${st.total} CLIENTES DE LA FICHA${st.pend ? ` (${st.pend} SIN VISITAR)` : ''}.`,
+    st.t1 ? `${st.t1} CLIENTE${st.t1 > 1 ? 'S' : ''} DE LA FICHA SE CONFIRMA${st.t1 > 1 ? 'N' : ''} VINCULADO${st.t1 > 1 ? 'S' : ''} A ESTE CD.` : '',
+    otros.length ? `SE REQUIERE ACTUALIZAR EL VÍNCULO DE ${otros.length} CLIENTE${otros.length > 1 ? 'S' : ''} VINCULADO${otros.length > 1 ? 'S' : ''} EN TERRENO A OTRO${otros.length > 1 ? 'S' : ''} CD: ${[...grupos.values()].reduce((a, g) => { const e = a.find(y => y.cd === g.cd); if (e) e.n += g.xs.length; else a.push({ cd: g.cd, n: g.xs.length }); return a; }, []).map(y => `${y.n} A CD ${y.cd}`).join(', ')}.` : '',
+    st.t4 ? `SE REGISTRA${st.t4 > 1 ? 'N' : ''} ${st.t4} CLIENTE${st.t4 > 1 ? 'S' : ''} NO INCLUIDO${st.t4 > 1 ? 'S' : ''} EN FICHA, VINCULADO${st.t4 > 1 ? 'S' : ''} A ESTE CD.` : '',
+    dif ? `${dif} CLIENTE${dif > 1 ? 'S' : ''} CON CLASE DE USO DIFERENTE A LA CLASE DE SERVICIO DE LA FICHA.` : '',
+    resumenHz(cli.map(x => x.r)) ? `HALLAZGOS EN CLIENTES: ${resumenHz(cli.map(x => x.r))}.` : (cli.length ? 'SIN HALLAZGOS TÉCNICOS EN LOS CLIENTES VERIFICADOS.' : ''),
+    unc.length ? `SE HALLA${unc.length > 1 ? 'N' : ''} ${unc.length} USUARIO${unc.length > 1 ? 'S' : ''} NO CLIENTE${unc.length > 1 ? 'S' : ''} (UNC)${resumenHz(unc.map(x => x.r)) ? ': ' + resumenHz(unc.map(x => x.r)) : ''}.` : 'NO SE HALLAN UNC.',
+    cdOt.length ? `ÓRDENES ADICIONALES: ${cdOt.join(', ')}.` : ''].filter(Boolean).join(' ');
+  out.push({ key: 'main', ot: cd.ot, titulo: 'Orden inicial', texto: p });
+  [...grupos.values()].sort((a, b) => (a.ot || 'Z').localeCompare(b.ot || 'Z') || a.cd.localeCompare(b.cd)).forEach(g => {
+    const n = g.xs.length, pl = n > 1, hz = resumenHz(g.xs.map(x => x.r)), svs = g.xs.map(x => x.r.servicio).filter(Boolean), cap = g.xs.map(x => x.r.capReal).find(Boolean);
+    const t = [`INSP. ORDEN ADICIONAL PARA ACTUALIZACIÓN DE VÍNCULO DERIVADA DE LA ORDEN ${cd.ot || '—'} DEL CD ${cd.id}.`,
+      `SE HALLA${pl ? 'N' : ''} ${n} SE (SERVICIO${pl ? 'S' : ''} ELÉCTRICO${pl ? 'S' : ''}) VINCULADO${pl ? 'S' : ''} EN TERRENO A CD ${g.cd}.`,
+      svs.length ? `SE: ${svs.join(', ')}.` : '', cap ? `CAPACIDAD DEL CD: ${U(cap)}.` : '',
+      hz ? `SE OBSERVAN HALLAZGOS: ${hz}.` : 'NO SE OBSERVAN HALLAZGOS.'].filter(Boolean).join(' ');
+    out.push({ key: 'ot|' + g.cd + '|' + g.ot, ot: g.ot, titulo: `CD ${g.cd}`, texto: t });
+  });
+  return out;
+}
+function obsHTML(cd) {
+  const ed = cd.obsEd || {};
+  return buildObs(cd).map(b => { const v = ed[b.key] != null ? ed[b.key] : b.texto;
+    return `<div class="obs"><div class="obh"><div><b>${b.ot ? 'OT ' + esc(b.ot) : 'OT pendiente'}</b><span>${esc(b.titulo)}</span></div><div class="row" style="flex:0 0 auto;flex-wrap:nowrap;gap:6px">${ed[b.key] != null ? `<button class="btn sm" data-act="obs-reset" data-k="${esc(b.key)}">Restablecer</button>` : ''}<button class="btn pri sm" data-act="obs-copy" data-k="${esc(b.key)}">Copiar</button></div></div><textarea class="obt" rows="7" data-obs="${esc(b.key)}" spellcheck="true">${esc(v)}</textarea></div>`; }).join('');
+}
+async function copiarTxt(txt) {
+  try { await navigator.clipboard.writeText(txt); return true; } catch { try { const t = document.createElement('textarea'); t.value = txt; document.body.appendChild(t); t.select(); const ok = document.execCommand('copy'); t.remove(); return ok; } catch { return false; } }
+}
+// ---------- registros ----------
+function viewRegs(cd) {
+  const f = S.rf || 'todos', items = cd.registros.map(r => { const m = r.tipo === 'CLIENTE' ? matchFicha(cd, r) : { i: null }; return { r, m, c: clasif(cd, r, m), x: m.i != null ? cd.ficha[m.i] : null }; }).sort((a, b) => String(b.r.creado).localeCompare(String(a.r.creado)));
+  const k = it => it.r.tipo === 'UNC' ? 'unc' : it.c === 1 ? 'este' : (it.c === 2 || it.c === 0) ? 'otro' : 'sin';
+  const cnt = key => items.filter(it => key === 'todos' || k(it) === key).length;
+  const ch = [['todos', 'Todos'], ['este', 'De este CD'], ['otro', 'De otro CD'], ['unc', 'UNC'], ['sin', 'No en ficha']];
+  const lst = items.filter(it => f === 'todos' || k(it) === f);
+  const card = it => { const r = it.r, unc = r.tipo === 'UNC', c = it.c;
+    const chip = unc ? badge('unc', 'UNC') : badge(CL[c] ? CL[c].c : 'none', c === 1 ? 'Del circuito ✓' : c === 2 || c === 0 ? (otOk(r.otReal) ? 'Otro circuito ✓' : 'Otro circuito · falta OT') : c === 3 ? 'No en ficha' : 'Sin clasificar');
+    const l1 = unc ? '' : [r.marca, r.actividad ? r.actividad.charAt(0) + r.actividad.slice(1).toLowerCase() : ''].filter(Boolean).map(esc).join(' · ');
+    const hz = r.hallazgo && r.hallazgo !== 'Sin hallazgo' ? '⚠ ' + esc(r.hallazgo) : esc(r.hallazgo || '');
+    const l2 = unc ? esc(r.material ? r.material.charAt(0) + r.material.slice(1).toLowerCase() : '') : `Serv. ${esc(r.servicio || '—')} · Cta. ${esc(r.cuenta || '—')}`;
+    const dir = r.direccion || (it.x && it.x.direccion) || '';
+    const otro = (c === 2 || c === 0) && r.cdReal ? `CD ${esc(normCd(r.cdReal))}${r.otReal ? ' · OT ' + esc(r.otReal) : ''}` : '';
+    return `<button class="it" data-act="open-reg2" data-id="${esc(r.id)}"><div class="t"><span>${unc ? 'Usuario no cliente' : 'Med. ' + esc(r.medidor || (it.x && it.x.medidor) || '—')}</span>${chip}</div>${l1 ? `<div class="s">${l1}</div>` : ''}<div class="s">${l2}</div><div class="s">${esc(dir) || 'Sin dirección'}</div>${otro ? `<div class="s">${otro}</div>` : ''}${hz ? `<div class="s">${hz}</div>` : ''}</button>`; };
+  return `<div class="chips" style="margin-top:0">${ch.map(([key, l]) => `<button class="chip ${f === key ? 'on' : ''}" data-rf="${key}">${l} ${cnt(key)}</button>`).join('')}</div>${lst.length ? lst.map(card).join('') : '<div class="note">Aún no hay registros.</div>'}${FOOT}`;
+}
 function viewRes(cd) {
   const s = stats(cd), warns = [];
   if (!otOk(cd.ot)) warns.push(`La OT del CD debe tener ${OT_LEN} dígitos.`); if (!setupOk(cd)) warns.push('Faltan datos del CD (placa, capacidad o hallazgos).');
@@ -368,6 +433,7 @@ function viewRes(cd) {
     <div class="card"><h2>Avance</h2><div class="kpis"><div class="kpi"><b>${s.visit}/${s.total}</b><span>Ficha visitada</span></div><div class="kpi"><b>${s.pend}</b><span>Pendientes</span></div></div>
     <div class="kpis k2" style="margin-top:10px"><div class="kpi"><b style="color:var(--ok)">${s.t1}</b><span>En ficha, de este CD</span></div><div class="kpi"><b style="color:var(--bad)">${s.t2}</b><span>En ficha, de otro CD</span></div><div class="kpi"><b style="color:var(--new)">${s.t3}</b><span>UNC</span></div><div class="kpi"><b style="color:var(--new)">${s.t4}</b><span>No en ficha, vinculados</span></div></div>
     ${warns.map(w => `<div class="note warn">${esc(w)}</div>`).join('')}</div>
+    <div class="card"><h2>Observaciones para el acta</h2><div id="obsbox">${obsHTML(cd)}</div><button class="btn full" data-act="obs-all" style="margin-top:6px">Copiar todas</button></div>
     <div class="card"><h2>Exportar</h2><div class="row"><button class="btn pri" data-act="xlsx">Exportar Excel</button><button class="btn" data-act="xlsx-share">Compartir</button></div>
     <div class="row" style="margin-top:8px"><button class="btn" data-act="json">Respaldo</button><button class="btn bad" data-act="del-cd">Eliminar CD</button></div>
     <p style="font-size:12px;color:var(--mut)">${cd.exportadoEn ? 'Última exportación: ' + esc(stamp(new Date(cd.exportadoEn))) : 'Aún no exportado.'}</p></div>
@@ -380,7 +446,7 @@ function render() {
   const cd = curCD(); let body = '';
   if (S.view === 'home') body = viewHome();
   else if (cd && (!cd.setup || S.edSetup)) body = viewSetup(cd);
-  else if (cd) body = S.tab === 'lista' ? viewLista(cd) : S.tab === 'reg' ? viewReg(cd) : viewRes(cd);
+  else if (cd) body = S.tab === 'lista' ? viewLista(cd) : S.tab === 'reg' ? viewReg(cd) : S.tab === 'regs' ? viewRegs(cd) : viewRes(cd);
   const key = S.view + ':' + S.tab + (S.tab === 'reg' && S.form ? S.form.tipo : '') + ':' + (cfg.usuario ? 1 : 0) + ':' + (S.cur || ''), cambio = key !== S._key; S._key = key;
   $('#root').innerHTML = header() + `<main${cambio ? ' class="enter"' : ''}>${body}</main>` + nav();
   if (S.view === 'cd' && S.tab === 'reg' && cd && cd.setup && !S.edSetup) { updateDerived(); }
@@ -454,14 +520,14 @@ async function guardar() {
   const rec = { id: f.id || uid(), tipo: f.tipo, servicio: unc ? '' : f.servicio.trim(), cuenta: unc ? '' : f.cuenta.trim(), medidor: unc || f.marca === SINMED ? '' : f.medidor.trim(), marca: unc ? '' : marca, lectura: unc || f.marca === SINMED ? null : num(f.lectura), actividad: f.actividad, material: unc ? f.material : '', pertenece: unc ? true : f.pertenece, hallazgo: f.hallazgo, obs: f.obs.trim().toUpperCase(), direccion: f.direccion.trim().toUpperCase(), lat: unc ? f.lat : null, lon: unc ? f.lon : null, prec: unc ? f.prec : null,  cdReal: !unc && f.pertenece === false ? normCd(f.cdReal) : '', capReal: !unc && f.pertenece === false ? f.capReal : '', otReal: !unc && f.pertenece === false ? f.otReal.trim().toUpperCase() : '', tecnico: f.tecnico || cfg.usuario, fecha: f.fecha || stamp(), creado: f.creado || new Date().toISOString(), editado: new Date().toISOString() };
   const i = cd.registros.findIndex(r => r.id === rec.id); if (i >= 0) cd.registros[i] = rec; else cd.registros.push(rec);
   await saveCD(cd);
-  toast('✓ Registro guardado'); const back = S.from; S.form = newForm(unc ? 'UNC' : 'CLIENTE'); S._autoI = null; S.from = 'reg'; S.tab = back === 'lista' ? 'lista' : 'reg'; render();
+  toast('✓ Registro guardado'); const back = S.from; S.form = newForm(unc ? 'UNC' : 'CLIENTE'); S._autoI = null; S.from = 'reg'; S.tab = back === 'lista' ? 'lista' : back === 'regs' ? 'regs' : 'reg'; render();
 }
 function abrirFicha(i) {
   const cd = curCD(), fi = cd.ficha[i], ex = stats(cd).reg.get(i);
   if (ex) return abrirReg(ex.id);
   S.form = newForm('CLIENTE'); S._autoI = null; S.form.servicio = fi.servicio; S.form.cuenta = fi.cuenta; S.form.medidor = fi.medidor; S.from = 'lista'; S.tab = 'reg'; render();
 }
-function abrirReg(id) { const r = curCD().registros.find(x => x.id === id); if (!r) return; S.form = formFromRec(r); S.form.creado = r.creado; S.form.fecha = r.fecha; S._autoI = null; S.from = 'lista'; S.tab = 'reg'; render(); }
+function abrirReg(id, from = 'lista') { const r = curCD().registros.find(x => x.id === id); if (!r) return; S.form = formFromRec(r); S.form.creado = r.creado; S.form.fecha = r.fecha; S._autoI = null; S.from = from; S.tab = 'reg'; render(); }
 
 // ---------- GPS ----------
 function geoStop(usar) {
@@ -514,7 +580,8 @@ async function cargarJSON(file) {
 
 // ---------- eventos ----------
 document.addEventListener('click', async ev => {
-  const t = ev.target.closest('[data-act],[data-tab],[data-flt],[data-seg] button'); if (!t) return;
+  const t = ev.target.closest('[data-act],[data-tab],[data-flt],[data-rf],[data-seg] button'); if (!t) return;
+  if (t.dataset.rf) { S.rf = t.dataset.rf; return render(); }
   const cd = curCD();
   if (t.dataset.tab) {
     if (S.tab === 'reg' && S.geo) geoStop(false); const k = t.dataset.tab;
@@ -537,10 +604,14 @@ document.addEventListener('click', async ev => {
     case 'open-cd': S.cur = t.dataset.id; S.view = 'cd'; S.tab = 'lista'; S.q = ''; S.flt = 'todos'; S.form = newForm(); S.from = 'reg'; return render();
     case 'nuevo': S.form = newForm(); S.from = 'reg'; S._autoI = null; S.tab = 'reg'; return render();
     case 'open-ficha': S.hl = 'f' + t.dataset.i; return abrirFicha(+t.dataset.i);
+    case 'open-reg2': return abrirReg(t.dataset.id, 'regs');
+    case 'obs-copy': { const ta = $(`[data-obs="${CSS.escape(t.dataset.k)}"]`); return toast(await copiarTxt(ta ? ta.value : '') ? '✓ Observación copiada' : 'No se pudo copiar'); }
+    case 'obs-reset': { delete (cd.obsEd || {})[t.dataset.k]; await saveCD(cd); return render(); }
+    case 'obs-all': { const bs = buildObs(cd), ed = cd.obsEd || {}; const txt = bs.map(b => `OT ${b.ot || 'PENDIENTE'}\n${ed[b.key] != null ? ed[b.key] : b.texto}`).join('\n\n'); return toast(await copiarTxt(txt) ? '✓ Observaciones copiadas' : 'No se pudo copiar'); }
     case 'open-reg': S.hl = 'r' + t.dataset.id; return abrirReg(t.dataset.id);
     case 'cancelar': if (S.geo) geoStop(false); S.form = newForm(S.form.tipo); S._autoI = null; if (S.from === 'lista') { S.tab = 'lista'; S.from = 'reg'; } return render();
     case 'guardar': return guardar();
-    case 'borrar-reg': if (confirm('¿Eliminar este registro?')) { cd.registros = cd.registros.filter(r => r.id !== S.form.id); await saveCD(cd); S.form = newForm(); S.tab = 'lista'; toast('Registro eliminado'); render(); } return;
+    case 'borrar-reg': if (confirm('¿Eliminar este registro?')) { cd.registros = cd.registros.filter(r => r.id !== S.form.id); await saveCD(cd); const bk = S.from; S.form = newForm(); S.tab = bk === 'regs' ? 'regs' : 'lista'; toast('Registro eliminado'); render(); } return;
     case 'geo': return geoStart();
     case 'dictar': return dictar();
     case 'hz': return hzAdd(cd, t.dataset.v);
@@ -555,6 +626,7 @@ document.addEventListener('input', ev => {
   const el = ev.target, cd = curCD();
   if (el.dataset.ot0 !== undefined) { el.value = el.value.replace(/\D/g, '').slice(0, OT_LEN); S.ot0 = el.value; const b = $('#btnFicha'); if (b) b.disabled = !otOk(S.ot0); return; }
   if (el.dataset.newot !== undefined) { el.value = el.value.replace(/\D/g, '').slice(0, OT_LEN); return; }
+  if (el.dataset.obs) { cd.obsEd = cd.obsEd || {}; cd.obsEd[el.dataset.obs] = el.value; clearTimeout(S._obsT); S._obsT = setTimeout(() => saveCD(cd), 600); return; }
   if (el.id === 'q') { S.q = el.value; $('#lst').innerHTML = listHTML(cd); return; }
   if (el.dataset.cdf) { if (el.dataset.cdf === 'ot') el.value = el.value.replace(/\D/g, '').slice(0, OT_LEN); if (el.dataset.cdf === 'placaReal') el.value = el.value.toUpperCase(); cd[el.dataset.cdf] = el.value.trim(); saveCD(cd); const bs0 = $('#btnSetup'); if (bs0) bs0.disabled = !setupOk(cd); if (S.tab === 'reg') updateDerived(); return; }
   const k = el.dataset.f; if (!k || !S.form) return;
