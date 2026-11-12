@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.10.13';
+const VER = '1.10.14';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -139,11 +139,15 @@ function buildSheets(cd) {
   });
   const ixCl = ['CLASIFICACION', 'TIPO_USUARIO'].map(c => COLS.indexOf(c)), dc = arr => arr.filter((_, i) => !ixCl.includes(i)).map(v => typeof v === 'string' ? v.toUpperCase() : v);
   const ixU = dc(COLS.slice(0, -5)).map((c, k) => k).filter(k => ['NRO_SERVICIO', 'NRO_CUENTA', 'NRO_MEDIDOR', 'MARCA_MEDIDOR', 'LECTURA_ENERGIA_ACTIVA'].includes(dc(COLS.slice(0, -5))[k])), du = arr => arr.filter((_, k) => !ixU.includes(k));
+  const reg5 = stats(cd).reg, dc0 = arr => arr.map(v => typeof v === 'string' ? v.toUpperCase() : v);
   return [
     { name: '1_VINCULADO_CD_FICHA', table: 'tblVinculadoCDFicha', columns: dc(COLS), rows: rows[1].map(dc), widths: dc(WIDTHS) },
     { name: '2_VINCULADO_OTRO_CD', table: 'tblVinculadoOtroCD', columns: dc(COLS), rows: rows[2].map(dc), widths: dc(WIDTHS) },
     { name: '3_UNC', table: 'tblUNC', columns: du(dc(COLS.slice(0, -5))), rows: rows[3].map(r => du(dc(r.slice(0, -5)))), widths: du(dc(WIDTHS.slice(0, -5))) },
-    { name: '4_PARA_VINCULAR', table: 'tblParaVincular', columns: dc(COLS.slice(0, -5)), rows: rows[4].map(r => dc(r.slice(0, -5))), widths: dc(WIDTHS.slice(0, -5)) }
+    { name: '4_PARA_VINCULAR', table: 'tblParaVincular', columns: dc(COLS.slice(0, -5)), rows: rows[4].map(r => dc(r.slice(0, -5))), widths: dc(WIDTHS.slice(0, -5)) },
+    { name: '5_FICHA_NO_VERIFICADA', table: 'tblFichaNoVerificada', columns: ['CD', 'OT', 'NRO_SERVICIO', 'NRO_CUENTA', 'NRO_MEDIDOR', 'MARCA_MEDIDOR', 'CLASE_SERVICIO', 'DIRECCION', 'LATITUD', 'LONGITUD', 'ULTIMA_LECTURA', 'PERIODO_ULTIMA_LECTURA', 'CARGA_AFORADA', 'FACTURACION', 'CONTROL_EN_FICHA', 'REINCIDENCIAS', 'ENERGIA_IMPUTADA_KWH'],
+      rows: cd.ficha.map((x, i) => reg5.has(i) ? null : [cd.id, cd.ot || '', x.servicio || '', x.cuenta || '', x.medidor || '', x.marca || '', x.clase || '', x.direccion || '', x.lat, x.lon, x.ultimaLectura, x.periodoUlt || '', x.carga, x.facturacion || '', x.cosecha || '', x.reinc || 0, x.imputada || 0]).filter(Boolean).map(dc0),
+      widths: [11, 12, 14, 12, 14, 13, 16, 34, 12, 12, 14, 14, 13, 14, 22, 13, 14] }
   ];
 }
 const mkBlob = (data, type) => new Blob([data], { type });
