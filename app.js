@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.11.0';
+const VER = '1.11.1';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -168,19 +168,32 @@ async function entregar(blob, name, compartir) {
   if (compartir && navigator.canShare) { const f = new File([blob], name, { type: blob.type }); if (navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f], title: name }); return true; } catch (e) { if (e.name === 'AbortError') return false; } } }
   download(blob, name); return true;
 }
+async function entregarVarios(items, compartir) {
+  if (NATIVE) {
+    const P = window.Capacitor.Plugins, uris = [];
+    for (const it of items) { const b64 = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = no; r.readAsDataURL(it.blob); }); uris.push((await P.Filesystem.writeFile({ path: it.name, data: b64, directory: 'CACHE' })).uri); }
+    try { await P.Share.share({ title: items[0].name, files: uris, dialogTitle: 'Guardar o enviar Excel y respaldo' }); return true; } catch (e) { return false; }
+  }
+  const files = items.map(it => new File([it.blob], it.name, { type: it.blob.type }));
+  if (compartir && navigator.canShare && navigator.canShare({ files })) { try { await navigator.share({ files, title: items[0].name }); return true; } catch (e) { if (e.name === 'AbortError') return false; } }
+  for (const it of items) { download(it.blob, it.name); await new Promise(r => setTimeout(r, 500)); }
+  return true;
+}
 const baseName = cd => `${cd.id}_${today()}`;
 async function exportarExcel(cd, compartir) {
   if (!otOk(cd.ot)) return toast(`La OT del CD debe tener ${OT_LEN} dígitos`);
   if (!setupOk(cd)) return toast('Completa los datos del CD');
   if (!await revisarFuera(cd)) return;
   const blob = mkBlob(XLSXLite.writeXlsx(buildSheets(cd)), XLSX_MIME);
-  const nombre = baseName(cd) + '.xlsx';
-  if (await entregar(blob, nombre, compartir)) { cd.exportadoEn = new Date().toISOString(); await saveCD(cd); render(); confirmarLimpieza(cd, nombre, () => entregar(blob, nombre, compartir)); }
+  const nombre = baseName(cd) + '.xlsx', nombreJ = baseName(cd) + '.json';
+  cd.exportadoEn = new Date().toISOString();
+  const items = [{ blob, name: nombre }, { blob: mkBlob(JSON.stringify({ app: 'GS_VCT', v: 1, cd }), 'application/json'), name: nombreJ }];
+  if (await entregarVarios(items, compartir)) { await saveCD(cd); render(); confirmarLimpieza(cd, [nombre, nombreJ], () => entregarVarios(items, compartir)); } else { cd.exportadoEn = null; }
 }
-function confirmarLimpieza(cd, nombre, reentregar) {
+function confirmarLimpieza(cd, nombres, reentregar) {
   const n = cd.registros.length, box = document.createElement('div'); box.className = 'modal';
   const paso1 = () => {
-    box.innerHTML = `<div class="box"><h3>✓ Excel descargado</h3><div class="card"><b>${esc(nombre)}</b><br>${n} registro(s) · ${cd.ficha.length} clientes de la ficha</div><div class="note">Confirma únicamente después de verificar el archivo en Descargas o en el destino que elegiste.<br><br><b>Confirmar descarga</b>: pasa a la última pregunta y limpia el CD.<br><b>Conservar pendiente</b>: no borra nada.</div><div class="row"><button class="btn" id="lmOtra">Descargar de nuevo</button></div><div class="row"><button class="btn" id="lmNo">Conservar pendiente</button><button class="btn pri" id="lmSi">Confirmar descarga</button></div></div>`;
+    box.innerHTML = `<div class="box"><h3>✓ Excel y respaldo descargados</h3><div class="card"><b>${esc(nombres[0])}</b><br><b>${esc(nombres[1])}</b> (respaldo)<br>${n} registro(s) · ${cd.ficha.length} clientes de la ficha</div><div class="note">Confirma únicamente después de verificar los dos archivos en Descargas o en el destino que elegiste.<br><br><b>Confirmar descarga</b>: pasa a la última pregunta y limpia el CD.<br><b>Conservar pendiente</b>: no borra nada.</div><div class="row"><button class="btn" id="lmOtra">Descargar de nuevo</button></div><div class="row"><button class="btn" id="lmNo">Conservar pendiente</button><button class="btn pri" id="lmSi">Confirmar descarga</button></div></div>`;
     $('#lmOtra').onclick = async () => { await reentregar(); };
     $('#lmNo').onclick = () => { box.remove(); toast('CD conservado como pendiente. Puedes volver a exportar.', 3200); };
     $('#lmSi').onclick = paso2;
