@@ -1,6 +1,6 @@
 /* GS VCT — Reporte de novedades Vínculo Cliente – Transformador (PWA offline). Desarrollado por Heidi Díaz */
 'use strict';
-const VER = '1.11.2';
+const VER = '1.12.0';
 const normCd = v => { const x = String(v || '').toUpperCase().replace(/\s+/g, ''); if (!x) return ''; if (/TR\d+$/.test(x)) return x; if (/T(R)?$/.test(x)) return x.replace(/T(R)?$/, 'TR1'); if (/T(\d+)$/.test(x)) return x.replace(/T(\d+)$/, 'TR$1'); if (/^[A-Z]?\d+$/.test(x)) return x + 'TR1'; return x; };
 const PLACA_NO = 'LA PLACA NO CORRESPONDE CON EL ROTULO DE LA OT';
 const OT_LEN = 10;
@@ -293,9 +293,10 @@ function listHTML(cd) {
   }).join('') + (out.length > 400 ? '<div class="note">Mostrando 400; usa el buscador para acotar.</div>' : '');
 }
 
-function newForm(tipo = 'CLIENTE') { return { id: null, tipo, servicio: '', cuenta: '', medidor: '', marca: '', marcaOtra: '', lectura: '', actividad: '', pertenece: null, hallazgo: tipo === 'UNC' ? '' : 'Sin hallazgo', obs: '', sinSis: false, direccion: '', lat: null, lon: null, prec: null, tecnico: cfg.usuario || '', cdReal: '', otReal: '', capReal: '', material: '' }; }
+function newForm(tipo = 'CLIENTE') { return { id: null, tipo, servicio: '', cuenta: '', medidor: '', marca: '', marcaOtra: '', lectura: '', actividad: '', pertenece: null, hallazgos: tipo === 'UNC' ? [] : ['Sin hallazgo'], obs: '', sinSis: false, direccion: '', lat: null, lon: null, prec: null, tecnico: cfg.usuario || '', cdReal: '', otReal: '', capReal: '', material: '' }; }
 function formFromRec(r) {
   const f = Object.assign(newForm(r.tipo), JSON.parse(JSON.stringify(r)));
+  if (!Array.isArray(f.hallazgos) || !f.hallazgos.length) f.hallazgos = r.hallazgo ? [r.hallazgo] : (f.tipo === 'UNC' ? [] : ['Sin hallazgo']);
   const lista = [...marcasList(), SINMED]; f.marcaOtra = ''; if (f.marca && !lista.includes(f.marca)) { f.marcaOtra = f.marca; f.marca = OTRA; }
   f.lectura = r.lectura == null ? '' : String(r.lectura); return f;
 }
@@ -321,7 +322,7 @@ function viewReg(cd) {
     ${unc ? `<div class="fld"><label class="req">Tipo de material del predio</label><select data-f="material">${opts(MATERIALES, f.material, 'Selecciona…')}</select></div>` : ''}
     <div class="fld"><label class="req" id="lblAct">${unc || m0.i == null ? 'Clase de servicio' : 'Clase de uso'}</label><select data-f="actividad">${opts(ACTIVIDADES, f.actividad, 'Selecciona…')}</select></div>
     <div class="fld"><label>Dirección (opcional)</label><input type="text" data-f="direccion" value="${esc(f.direccion)}" style="text-transform:uppercase"></div>
-    <div class="fld"><label class="req">Hallazgo de pérdidas</label><select data-f="hallazgo">${opts(unc ? HALLAZGOS_UNC : HALLAZGOS, f.hallazgo, 'Selecciona…')}</select></div>
+    <div class="fld"><label class="req">Hallazgos de pérdidas</label><div id="hfbox">${hfHTML(f)}</div></div>
     <div class="fld"><label>Observación</label><div class="row" style="align-items:flex-start;flex-wrap:nowrap"><textarea data-f="obs" placeholder="OBSERVACIÓN…">${esc(f.obs)}</textarea><button type="button" class="btn mic" data-act="dictar" aria-label="Dictar">${ic('mic')}</button></div></div>
     <div id="errs"></div>
     <div class="row" style="margin-top:8px"><button class="btn full" data-act="cancelar" style="flex:0 0 36%">${f.id ? 'Cancelar' : 'Limpiar'}</button><button class="btn pri" id="btnSave" data-act="guardar">${f.id ? 'Guardar cambios' : 'Guardar'}</button></div>
@@ -341,12 +342,22 @@ function geoHTML(f) {
 
 // resumen ---------------------------------------------------
 function setupOk(cd) { return !!(otOk(cd.ot) && cd.placa && (cd.placa !== PLACA_NO || (cd.placaReal || '').trim()) && cd.capacidad && cd.hallazgosCD && cd.hallazgosCD.length); }
+function msHTML(sel, lista, act, open) {
+  const txt = !sel.length ? 'Selecciona…' : sel.length === 1 ? sel[0] : `${sel.length} hallazgos seleccionados`;
+  return `<details class="ms"${open ? ' open' : ''}><summary><span>${esc(txt)}</span></summary>
+    <div class="msl">${lista.map(h => `<button type="button" class="mso${sel.includes(h) ? ' on' : ''}" data-act="${act}" data-v="${esc(h)}"><i></i><span>${esc(h)}</span></button>`).join('')}</div></details>`;
+}
+function hfHTML(f) { return msHTML(f.hallazgos || [], alfa(f.tipo === 'UNC' ? HALLAZGOS_UNC : HALLAZGOS), 'hzf', f._open); }
+function hzfToggle(v) {
+  const f = S.form; if (!f) return; const a = f.hallazgos = f.hallazgos || [], i = a.indexOf(v);
+  if (i >= 0) a.splice(i, 1); else if (v === 'Sin hallazgo') { a.length = 0; a.push(v); } else { const k = a.indexOf('Sin hallazgo'); if (k >= 0) a.splice(k, 1); a.push(v); }
+  if (!a.length && f.tipo !== 'UNC') a.push('Sin hallazgo');
+  f._open = true; updateDerived(); const b = $('#hfbox'); if (b) b.innerHTML = hfHTML(f);
+}
 function hzHTML(cd) {
   const sel = cd.hallazgosCD || [], rest = alfa(HZ_CD.filter(h => h !== 'Sin hallazgos'));
   const lista = ['Sin hallazgos', ...rest];
-  const txt = !sel.length ? 'Selecciona…' : sel.length === 1 ? sel[0] : `${sel.length} hallazgos seleccionados`;
-  return `<details class="ms"${S.hzOpen ? ' open' : ''}><summary><span>${esc(txt)}</span></summary>
-    <div class="msl">${lista.map(h => `<button type="button" class="mso${sel.includes(h) ? ' on' : ''}" data-act="hz" data-v="${esc(h)}"><i></i><span>${esc(h)}</span></button>`).join('')}</div></details>`;
+  return msHTML(sel, lista, 'hz', S.hzOpen);
 }
 function hzAdd(cd, v) {
   let a = cd.hallazgosCD = cd.hallazgosCD || [];
@@ -391,7 +402,7 @@ function revisarFuera(cd) {
 }
 
 // ---------- observaciones para el acta (Forcebeat) ----------
-const hzList = r => { const a = []; if (r.hallazgo && r.hallazgo !== 'Sin hallazgo') a.push(r.hallazgo); if (r.lectBaja && !a.includes(LECT_BAJA)) a.push(LECT_BAJA); if (r.sinSis && !a.includes(SIN_SIS)) a.push(SIN_SIS); return a; };
+const hzList = r => { const a = (r.hallazgos || (r.hallazgo ? [r.hallazgo] : [])).filter(h => h && h !== 'Sin hallazgo'); if (r.lectBaja && !a.includes(LECT_BAJA)) a.push(LECT_BAJA); if (r.sinSis && !a.includes(SIN_SIS)) a.push(SIN_SIS); return a; };
 const U = v => String(v ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
 function resumenHz(rs) {
   const m = new Map(); rs.forEach(r => hzList(r).forEach(x => { const h = U(x); if (h) m.set(h, (m.get(h) || 0) + 1); }));
@@ -498,7 +509,7 @@ function validar(cd, f, m) {
   }
   if (!f.actividad) e.push(unc || m.i == null ? 'Clase de servicio' : 'Clase de uso'); if (unc && !f.material) e.push('Tipo de material del predio');
   if (unc) { if (f.lat == null) e.push('Capturar coordenada (obligatoria para UNC)'); }
-  if (!f.hallazgo) e.push('Hallazgo técnico'); else if (f.hallazgo === HOTRO && !f.obs.trim()) e.push('Describe el hallazgo en la observación');
+  if (!f.hallazgos || !f.hallazgos.length) e.push('Hallazgo técnico'); else if (f.hallazgos.includes(HOTRO) && !f.obs.trim()) e.push('Describe el hallazgo en la observación');
   // duplicados
   if (!f.id && !unc) {
     const dup = cd.registros.find(r => r.tipo === 'CLIENTE' && ((idn(f.servicio) && idn(r.servicio) === idn(f.servicio)) || (idn(f.cuenta) && idn(r.cuenta) === idn(f.cuenta)) || (f.sinSis && idn(f.medidor) && idn(r.medidor) === idn(f.medidor)) || (m.i != null && matchFicha(cd, r).i === m.i)));
@@ -520,9 +531,11 @@ function updateDerived() {
   if (m.i == null) S._autoI = null;
   // mostrar/ocultar
   const sh = (k, on) => { const el = $(`[data-show="${k}"]`); if (el) el.classList.toggle('hidden', !on); };
-  if (m.i != null && f.sinSis) { f.sinSis = false; if (f.hallazgo === SIN_SIS) { f.hallazgo = 'Sin hallazgo'; const hs0 = $('[data-f="hallazgo"]'); if (hs0) hs0.value = f.hallazgo; } }
+  const ens = (v, on) => { const a = f.hallazgos = f.hallazgos || [], i = a.indexOf(v); if (on && i < 0) { const k = a.indexOf('Sin hallazgo'); if (k >= 0) a.splice(k, 1); a.push(v); return true; } if (!on && i >= 0) { a.splice(i, 1); if (!a.length && f.tipo !== 'UNC') a.push('Sin hallazgo'); return true; } return false; };
+  const hfRender = () => { const b = $('#hfbox'); if (b) b.innerHTML = hfHTML(f); };
+  if (m.i != null && f.sinSis) f.sinSis = false;
   sh('pert', m.i != null); sh('sinsis', m.i == null); document.querySelectorAll('[data-show="svc"]').forEach(el => el.classList.toggle('hidden', !!f.sinSis));
-  { const hs = $('[data-f="hallazgo"]'); if (f.sinSis && (!f.hallazgo || f.hallazgo === 'Sin hallazgo')) { f.hallazgo = SIN_SIS; if (hs) hs.value = SIN_SIS; } else if (!f.sinSis && f.hallazgo === SIN_SIS) { f.hallazgo = 'Sin hallazgo'; if (hs) hs.value = f.hallazgo; } const bt = $('#btnSinSis'); if (bt) { bt.classList.toggle('sel', !!f.sinSis); bt.textContent = (f.sinSis ? '✓ ' : '') + SIN_SIS; bt.setAttribute('aria-pressed', !!f.sinSis); } }
+  { if (ens(SIN_SIS, !!f.sinSis)) hfRender(); const bt = $('#btnSinSis'); if (bt) { bt.classList.toggle('sel', !!f.sinSis); bt.textContent = (f.sinSis ? '✓ ' : '') + SIN_SIS; bt.setAttribute('aria-pressed', !!f.sinSis); } }
   if (!unc) { if (m.i == null && f.pertenece !== true) { f.pertenece = true; f._auto = true; } else if (m.i != null && f._auto) { f.pertenece = null; f._auto = false; document.querySelectorAll('[data-seg="pertenece"] button').forEach(b => b.classList.remove('on', 'no')); } }
   sh('otra', f.marca === OTRA); sh('lect', f.marca !== SINMED);
   // tarjeta de coincidencia
@@ -534,7 +547,7 @@ function updateDerived() {
   sh('otro', c === 2 || c === 0);
   // lectura vs última
   const lh = $('#lectHint'); if (lh) { const fi = m.i != null ? cd.ficha[m.i] : null, v = num(f.lectura); const baja = !!(fi && fi.ultimaLectura != null && v != null && v < fi.ultimaLectura);
-    { const hs = $('[data-f="hallazgo"]'); if (baja && (!f.hallazgo || f.hallazgo === 'Sin hallazgo')) { f.hallazgo = LECT_BAJA; if (hs) hs.value = LECT_BAJA; } else if (!baja && f.hallazgo === LECT_BAJA) { f.hallazgo = 'Sin hallazgo'; if (hs) hs.value = 'Sin hallazgo'; } } lh.innerHTML = fi && fi.ultimaLectura != null ? `<div class="lect${baja ? ' bad' : ''}"><span>Última lectura en ficha<b>${fmt(fi.ultimaLectura)} kWh</b><em>periodo ${esc(fi.periodoUlt)}</em></span>${baja ? '<strong>Menor a la última: revisa</strong>' : ''}</div>` : ''; }
+    if (ens(LECT_BAJA, baja)) hfRender(); lh.innerHTML = fi && fi.ultimaLectura != null ? `<div class="lect${baja ? ' bad' : ''}"><span>Última lectura en ficha<b>${fmt(fi.ultimaLectura)} kWh</b><em>periodo ${esc(fi.periodoUlt)}</em></span>${baja ? '<strong>Menor a la última: revisa</strong>' : ''}</div>` : ''; }
   // errores
   const errs = validar(cd, f, m); $('#errs').innerHTML = errs.length ? `<div class="note warn"><b>Pendiente:</b> ${errs.map(esc).join(' · ')}${S.dup && errs.includes('Este cliente ya está registrado') ? ` <button class="btn sm" data-act="open-reg" data-id="${esc(S.dup)}">Abrir el existente</button>` : ''}</div>` : '';
   $('#btnSave').disabled = errs.length > 0;
@@ -551,7 +564,7 @@ async function guardar() {
   const cd = curCD(), f = S.form, unc = f.tipo === 'UNC', m = unc ? { i: null } : matchFicha(cd, f), errs = validar(cd, f, m);
   if (errs.length) return toast('Pendiente: ' + errs[0]);
   const marca = unc ? '' : marcaFinal(f); if (marca && f.marca === OTRA && !marcasList().includes(marca)) { (cfg.marcasExtra = cfg.marcasExtra || []).push(marca); await saveCfg(); }
-  const rec = { id: f.id || uid(), tipo: f.tipo, servicio: unc || f.sinSis ? '' : f.servicio.trim(), cuenta: unc || f.sinSis ? '' : f.cuenta.trim(), sinSis: !unc && !!f.sinSis, medidor: unc || f.marca === SINMED ? '' : f.medidor.trim(), marca: unc ? '' : marca, lectura: unc || f.marca === SINMED ? null : num(f.lectura), actividad: f.actividad, material: unc ? f.material : '', pertenece: unc ? true : f.pertenece, hallazgo: f.hallazgo, lectBaja: !!(!unc && f.marca !== SINMED && m.i != null && cd.ficha[m.i].ultimaLectura != null && num(f.lectura) != null && num(f.lectura) < cd.ficha[m.i].ultimaLectura), obs: f.obs.trim().toUpperCase(), direccion: f.direccion.trim().toUpperCase(), lat: unc ? f.lat : null, lon: unc ? f.lon : null, prec: unc ? f.prec : null,  cdReal: !unc && f.pertenece === false ? normCd(f.cdReal) : '', capReal: !unc && f.pertenece === false ? f.capReal : '', otReal: !unc && f.pertenece === false ? f.otReal.trim().toUpperCase() : '', tecnico: f.tecnico || cfg.usuario, fecha: f.fecha || stamp(), creado: f.creado || new Date().toISOString(), editado: new Date().toISOString() };
+  const rec = { id: f.id || uid(), tipo: f.tipo, servicio: unc || f.sinSis ? '' : f.servicio.trim(), cuenta: unc || f.sinSis ? '' : f.cuenta.trim(), sinSis: !unc && !!f.sinSis, medidor: unc || f.marca === SINMED ? '' : f.medidor.trim(), marca: unc ? '' : marca, lectura: unc || f.marca === SINMED ? null : num(f.lectura), actividad: f.actividad, material: unc ? f.material : '', pertenece: unc ? true : f.pertenece, hallazgos: [...f.hallazgos], hallazgo: f.hallazgos.join(' / '), lectBaja: !!(!unc && f.marca !== SINMED && m.i != null && cd.ficha[m.i].ultimaLectura != null && num(f.lectura) != null && num(f.lectura) < cd.ficha[m.i].ultimaLectura), obs: f.obs.trim().toUpperCase(), direccion: f.direccion.trim().toUpperCase(), lat: unc ? f.lat : null, lon: unc ? f.lon : null, prec: unc ? f.prec : null,  cdReal: !unc && f.pertenece === false ? normCd(f.cdReal) : '', capReal: !unc && f.pertenece === false ? f.capReal : '', otReal: !unc && f.pertenece === false ? f.otReal.trim().toUpperCase() : '', tecnico: f.tecnico || cfg.usuario, fecha: f.fecha || stamp(), creado: f.creado || new Date().toISOString(), editado: new Date().toISOString() };
   const i = cd.registros.findIndex(r => r.id === rec.id); if (i >= 0) cd.registros[i] = rec; else cd.registros.push(rec);
   await saveCD(cd);
   toast('✓ Registro guardado'); const back = S.from; S.form = newForm(unc ? 'UNC' : 'CLIENTE'); S._autoI = null; S.from = 'reg'; S.tab = back === 'lista' ? 'lista' : back === 'regs' ? 'regs' : 'reg'; render();
@@ -653,6 +666,7 @@ document.addEventListener('click', async ev => {
     case 'geo': return geoStart();
     case 'dictar': return dictar();
     case 'hz': return hzAdd(cd, t.dataset.v);
+    case 'hzf': return hzfToggle(t.dataset.v);
     case 'setup-ok': if (!setupOk(cd)) return toast('Completa placa, capacidad y hallazgos'); const prim = !cd.setup; cd.setup = true; S.edSetup = false; await saveCD(cd); if (prim) S.tab = 'lista'; return render();
     case 'xlsx': return exportarExcel(cd, false);
     case 'xlsx-share': return exportarExcel(cd, true);
