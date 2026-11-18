@@ -117,7 +117,7 @@ function buildCDs(wb) {
     const fichaCols = (() => { const seen = {}; return cl.cols.map(c => { let l = c.label.toUpperCase(); seen[l] = (seen[l] || 0) + 1; return seen[l] > 1 ? l + '_' + seen[l] : l; }); })();
     const ficha = cl.filter(o => rawId(o.cd) === id).map(o => {
       const co = fixCoord(o.lat, o.lon); const cons = {}; for (const k in o) if (/^20\d{4}$/.test(k) && o[k] != null ) cons[k] = num(o[k]);
-      return { servicio: rawId(o.nro_servicio), cuenta: rawId(o.nro_cuenta), direccion: String(o.direccion ?? '').trim(), medidor: rawId(o.nro_medidor), marca: String(o.marca_medidor ?? '').trim().toUpperCase(), periodoUlt: rawId(o.periodo_ultima_lectura), ultimaLectura: num(o.ultima_lectura), facturacion: String(o.facturacion ?? '').trim(), carga: num(o.carga_aforada), lat: co.lat, lon: co.lon, clase: String(o.clase_servicio ?? '').trim().toUpperCase(), cosecha: String(o.cosecha ?? '').trim(), reinc: num(o.reincidencias) || 0, imputada: num(o.energia_imputada) || 0, cons, raw: cl.cols.map(c => { const v = o.__raw[c.i]; return v == null || v === '' ? null : v; }) };
+      return { servicio: rawId(o.nro_servicio), cuenta: rawId(o.nro_cuenta), direccion: String(o.direccion ?? '').trim(), medidor: rawId(o.nro_medidor), marca: String(o.marca_medidor ?? '').trim().toUpperCase(), periodoUlt: rawId(o.periodo_ultima_lectura), ultimaLectura: num(o.ultima_lectura), facturacion: String(o.facturacion ?? '').trim(), carga: num(o.carga_aforada), lat: co.lat, lon: co.lon, clase: String(o.clase_servicio ?? '').trim().toUpperCase(), cosecha: String(o.cosecha ?? '').trim(), cnr: String(o.cnr ?? '').trim(), reinc: num(o.reincidencias) || 0, imputada: num(o.energia_imputada) || 0, cons, raw: cl.cols.map(c => { const v = o.__raw[c.i]; return v == null || v === '' ? null : v; }) };
     });
     return {
       id, creado: new Date().toISOString(), ot: '', placa: '', capacidad: '', hallazgosCD: [], setup: false, placaReal: '', exportadoEn: null,
@@ -313,7 +313,7 @@ function listHTML(cd) {
     const med = rr.medidor || x.medidor, marca = rr.marca || x.marca;
     const title = unc ? 'Usuario no cliente' : `Med. ${esc(med || '—')}`;
     const dir = x.direccion || rr.direccion || '';
-    const extra = it.f && (it.f.cosecha || !it.f.medidor) ? `<span style="color:var(--warn)">${esc(it.f.cosecha || 'Sin medidor en ficha')}</span>` : '';
+    const extra = it.f && (it.f.cosecha || (it.f.cnr && it.f.cnr !== '0') || !it.f.medidor) ? `<span style="color:var(--warn)">${esc([it.f.cosecha, it.f.cnr && it.f.cnr !== '0' ? 'CNR ' + it.f.cnr : ''].filter(Boolean).join(' · ') || 'Sin medidor en ficha')}</span>` : '';
     const hz = hzList(rr).length ? '⚠ ' + esc(hzList(rr).join(' / ')) : '';
     const clase = it.f && it.f.clase ? it.f.clase.charAt(0) + it.f.clase.slice(1).toLowerCase() : '';
     const l1 = unc ? '' : [marca ? esc(marca) : '', clase ? esc(clase) : '', extra, hz].filter(Boolean).join(' · ');
@@ -588,7 +588,7 @@ function matchHTML(cd, f, m) {
   const x = cd.ficha[m.i], cons = Object.entries(x.cons || {}).sort((p, q) => p[0].localeCompare(q[0])).map(([k, v]) => `<div class="c"><em>${k.slice(4)}/${k.slice(2, 4)}</em><b>${fmt(v)}</b></div>`).join('');
   return `<div class="fx"><div class="fxh"><span class="fxok">✓ En ficha</span>${x.clase ? `<span class="fxc">Clase de servicio <b>${esc(x.clase)}</b></span>` : ''}${x.carga != null ? `<span class="fxc">Carga aforada <b>${x.carga}</b></span>` : ''}</div>${cons ? `<div class="fxl">Consumos (kWh)</div><div class="cons">${cons}</div>` : ''}</div>` +
     (m.conflict ? '<div class="note err">El servicio, la cuenta y el medidor escritos corresponden a clientes distintos de la ficha. Revísalos.</div>' : '') +
-    (x.cosecha ? `<div class="note warn">Control en ficha: ${esc(x.cosecha)}</div>` : '') + (x.reinc ? `<div class="note warn">Reincidencias: ${x.reinc}${x.imputada ? ' · energía imputada ' + fmt(x.imputada) + ' kWh' : ''}</div>` : '') + (!x.medidor ? '<div class="note warn">La ficha no tiene medidor para este cliente.</div>' : '');
+    (x.cosecha ? `<div class="note warn">Control en ficha: ${esc(x.cosecha)}</div>` : '') + (x.cnr && x.cnr !== '0' ? `<div class="note warn">CNR: ${esc(x.cnr)}</div>` : '') + (x.reinc ? `<div class="note warn">Reincidencias: ${x.reinc}${x.imputada ? ' · energía imputada ' + fmt(x.imputada) + ' kWh' : ''}</div>` : '') + (!x.medidor ? '<div class="note warn">La ficha no tiene medidor para este cliente.</div>' : '');
 }
 async function guardar() {
   const cd = curCD(), f = S.form, unc = f.tipo === 'UNC', m = unc ? { i: null } : matchFicha(cd, f), errs = validar(cd, f, m);
