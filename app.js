@@ -64,29 +64,59 @@ const DR = () => (S._dr && S._dr.cd === S.cur ? S._dr : (S._dr = { cd: S.cur }))
 const saveCD = cd => dbPutCD(cd);
 
 // ---------- lectura del Excel -> CD ----------
-function sheetObjs(rows) {
+// Los encabezados cambian entre fichas (cod_transformador, ID_COD_TRA, latitud…): se reconocen por sinónimos y, si falta el CD, por el contenido de las celdas.
+const ALIAS = {
+  cd: 'cd cod_transformador codigo_transformador id_cod_tra id_cod_transformador cod_tra transformador id_transformador cod_cd codigo_cd id_cd nombre_cd placa_transformador',
+  nro_servicio: 'nro_servicio servicio numero_servicio no_servicio n_servicio id_servicio cod_servicio nis',
+  nro_cuenta: 'nro_cuenta cuenta numero_cuenta no_cuenta n_cuenta nro_cta cod_cuenta',
+  nro_medidor: 'nro_medidor medidor numero_medidor no_medidor n_medidor num_medidor serie_medidor nro_serie serie',
+  marca_medidor: 'marca_medidor marca marca_del_medidor',
+  direccion: 'direccion dir direccion_predio direccion_servicio',
+  carga_aforada: 'carga_aforada carga carga_kw',
+  ultima_lectura: 'ultima_lectura ult_lectura ultima_lec lectura',
+  periodo_ultima_lectura: 'periodo_ultima_lectura periodo_ult_lectura periodo_lectura',
+  clase_servicio: 'clase_servicio clase clase_de_servicio tipo_servicio',
+  cod_circuito: 'cod_circuito codigo_circuito', circuito: 'circuito nombre_circuito', potencia_kva: 'potencia_kva potencia kva',
+  tipo_red: 'tipo_red', tecnologia_macro: 'tecnologia_macro tecnologia', cant_clientes: 'cant_clientes cantidad_clientes n_clientes',
+  periodo: 'periodo periodo_bal', entradas: 'entradas energia_entrada', salidas: 'salidas energia_salida', perdidas: 'perdidas', indice: 'indice indice_perdidas'
+};
+const ALIAS_CL = { lat: 'lat latitud', lon: 'lon longitud long lng' };
+const ALIAS_BL = { latitud: 'latitud lat', longitud: 'longitud lon long lng' };
+const CD_RE = /^[0-9]{2,}[A-Z]*TR[0-9A-Z]*$/i;
+function sheetObjs(rows, kind) {
   const h = rows.findIndex(r => r && r.some(c => c != null && c !== '')); if (h < 0) return [];
-  const keys = [], seen = new Set();
-  for (let i = 0; i < rows[h].length; i++) { const k = norm(rows[h][i]); if (k && !seen.has(k)) { seen.add(k); keys[i] = k; } }
+  const table = {}; const add = t => Object.entries(t).forEach(([c, l]) => l.split(' ').forEach(a => { if (!(a in table)) table[a] = c; }));
+  add(kind === 'bl' ? ALIAS_BL : ALIAS_CL); add(ALIAS);
+  const names = rows[h].map(norm), keys = [], used = new Set();
+  names.forEach((k, i) => { if (k && table[k] === k && !used.has(k)) { used.add(k); keys[i] = k; } });                 // nombre exacto primero
+  names.forEach((k, i) => { if (!k || keys[i]) return; const c = table[k]; if (c && !used.has(c)) { used.add(c); keys[i] = c; } }); // luego sinónimos
+  names.forEach((k, i) => { if (k && !keys[i] && !used.has(k)) { used.add(k); keys[i] = k; } });
+  if (!used.has('cd')) { // sin columna de CD reconocible: la que traiga códigos tipo 4771TR1
+    let best = -1, bs = 0; const body = rows.slice(h + 1, h + 60);
+    rows[h].forEach((_, j) => { const v = body.map(r => r && r[j]).filter(x => x != null && x !== ''); if (!v.length) return; const sc = v.filter(x => CD_RE.test(String(x).trim())).length / v.length; if (sc > bs) { bs = sc; best = j; } });
+    if (best >= 0 && bs >= .8) { if (keys[best]) used.delete(keys[best]); keys[best] = 'cd'; used.add('cd'); }
+  }
   const out = [];
   for (let i = h + 1; i < rows.length; i++) { const r = rows[i]; if (!r || !r.some(c => c != null && c !== '')) continue; const o = {}; keys.forEach((k, j) => { if (k) o[k] = r[j]; }); Object.defineProperty(o, '__raw', { value: r.slice(), enumerable: false }); out.push(o); }
   out.cols = rows[h].map((c, i) => ({ i, label: String(c ?? '').trim() })).filter(c => c.label);
+  out.headers = rows[h].map(c => String(c ?? '').trim()).filter(Boolean);
   return out;
 }
 function buildCDs(wb) {
   const names = Object.keys(wb);
-  const cn = names.find(n => norm(n) === 'clientes') || names.find(n => (wb[n].find(r => r && r.length) || []).map(norm).includes('nro_servicio'));
+  const hasSrv = n => (wb[n].find(r => r && r.some(c => c != null && c !== '')) || []).map(norm).some(k => ALIAS.nro_servicio.split(' ').includes(k));
+  const cn = names.find(n => norm(n) === 'clientes') || names.find(hasSrv);
   const bn = names.find(n => norm(n).includes('balance'));
   if (!cn) throw new Error('No encontré la hoja CLIENTES en la ficha');
-  const cl = sheetObjs(wb[cn]), bl = bn ? sheetObjs(wb[bn]) : [];
+  const cl = sheetObjs(wb[cn], 'cl'), bl = bn ? sheetObjs(wb[bn], 'bl') : [];
   const ids = []; [...cl, ...bl].forEach(o => { const id = rawId(o.cd); if (id && !ids.includes(id)) ids.push(id); });
-  if (!ids.length) throw new Error('No encontré la columna CD en la ficha');
+  if (!ids.length) throw new Error('No encontré la columna del CD. Encabezados de CLIENTES: ' + (cl.headers || []).slice(0, 12).join(', '));
   return ids.map(id => {
     const b = bl.filter(o => rawId(o.cd) === id).sort((x, y) => String(y.periodo).localeCompare(String(x.periodo)));
     const b0 = b[0] || {}; const c0 = fixCoord(b0.latitud, b0.longitud);
     const fichaCols = (() => { const seen = {}; return cl.cols.map(c => { let l = c.label.toUpperCase(); seen[l] = (seen[l] || 0) + 1; return seen[l] > 1 ? l + '_' + seen[l] : l; }); })();
     const ficha = cl.filter(o => rawId(o.cd) === id).map(o => {
-      const co = fixCoord(o.lat, o.lon); const cons = {}; for (const k in o) if (/^20\d{4}$/.test(k) && o[k] != null) cons[k] = num(o[k]);
+      const co = fixCoord(o.lat, o.lon); const cons = {}; for (const k in o) if (/^20\d{4}$/.test(k) && o[k] != null ) cons[k] = num(o[k]);
       return { servicio: rawId(o.nro_servicio), cuenta: rawId(o.nro_cuenta), direccion: String(o.direccion ?? '').trim(), medidor: rawId(o.nro_medidor), marca: String(o.marca_medidor ?? '').trim().toUpperCase(), periodoUlt: rawId(o.periodo_ultima_lectura), ultimaLectura: num(o.ultima_lectura), facturacion: String(o.facturacion ?? '').trim(), carga: num(o.carga_aforada), lat: co.lat, lon: co.lon, clase: String(o.clase_servicio ?? '').trim().toUpperCase(), cosecha: String(o.cosecha ?? '').trim(), reinc: num(o.reincidencias) || 0, imputada: num(o.energia_imputada) || 0, cons, raw: cl.cols.map(c => { const v = o.__raw[c.i]; return v == null || v === '' ? null : v; }) };
     });
     return {
