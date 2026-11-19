@@ -448,7 +448,7 @@ function buildObs(cd) {
   const dif = regs.filter(x => x.f && x.f.clase && x.r.actividad && U(x.f.clase) !== U(x.r.actividad)).length;
   const hzt = (cd.hallazgosCD || []).map(U).filter(h => h && h !== 'SIN HALLAZGOS');
   const placaTxt = cd.placa === PLACA_NO ? `LA PLACA NO CORRESPONDE CON EL RÓTULO DE LA OT${cd.placaReal ? ' (RÓTULO REAL: ' + U(cd.placaReal) + ')' : ''}` : cd.placa === PLACAS[2] ? 'EL TRANSFORMADOR NO TIENE PLACA VISIBLE' : cd.placa ? 'LA PLACA CORRESPONDE CON EL RÓTULO DE LA OT' : '';
-  const p = [`INST.BT.BARR.VCT ORDEN PARA VINCULACIÓN DE CUENTAS AL CD: ${cd.id}, EJECUTAR ACTUALIZACIÓN DEL VÍNCULO CLIENTE-TRANSFORMADOR Y ACTUALIZACIÓN DE ACTIVIDAD ECONÓMICA DE CLIENTES DE ACUERDO CON FICHA ENTREGADA.`,
+  const p = [`INST.BT.BARR.VCT ORDEN ${cd.ot || '(SIN OT)'} PARA VINCULACIÓN DE CUENTAS AL CD: ${cd.id}, EJECUTAR ACTUALIZACIÓN DEL VÍNCULO CLIENTE-TRANSFORMADOR Y ACTUALIZACIÓN DE ACTIVIDAD ECONÓMICA DE CLIENTES DE ACUERDO CON FICHA ENTREGADA.`,
     placaTxt ? placaTxt + '.' : '', cd.capacidad ? `CAPACIDAD DEL TRANSFORMADOR: ${cd.capacidad} kVA.` : '',
     hzt.length ? `HALLAZGOS DEL TRANSFORMADOR: ${hzt.join(', ')}.` : 'SIN HALLAZGOS EN EL TRANSFORMADOR.',
     `SE VERIFICAN ${st.visit} DE ${st.total} CLIENTES DE LA FICHA${st.pend ? ` (${st.pend} SIN VISITAR)` : ''}.`,
@@ -462,7 +462,7 @@ function buildObs(cd) {
   out.push({ key: 'main', ot: cd.ot, titulo: 'Orden inicial', texto: p });
   [...grupos.values()].sort((a, b) => (a.ot || 'Z').localeCompare(b.ot || 'Z') || a.cd.localeCompare(b.cd)).forEach(g => {
     const n = g.xs.length, pl = n > 1, hz = resumenHz(g.xs.map(x => x.r)), svs = g.xs.map(x => x.r.servicio).filter(Boolean), cap = g.xs.map(x => x.r.capReal).find(Boolean);
-    const t = [`INSP. ORDEN ADICIONAL PARA ACTUALIZACIÓN DE VÍNCULO DERIVADA DE LA ORDEN ${cd.ot || '—'} DEL CD ${cd.id}.`,
+    const t = [`INSP. ORDEN ADICIONAL ${g.ot || '(SIN OT)'} PARA ACTUALIZACIÓN DE VÍNCULO DERIVADA DE LA ORDEN ${cd.ot || '(SIN OT)'} DEL CD ${cd.id}.`,
       `SE HALLA${pl ? 'N' : ''} ${n} SE (SERVICIO${pl ? 'S' : ''} ELÉCTRICO${pl ? 'S' : ''}) VINCULADO${pl ? 'S' : ''} EN TERRENO A CD ${g.cd}.`,
       svs.length ? `SE: ${svs.join(', ')}.` : '', cap ? `CAPACIDAD DEL CD: ${U(cap)}.` : '',
       hz ? `SE OBSERVAN HALLAZGOS: ${hz}.` : 'NO SE OBSERVAN HALLAZGOS.'].filter(Boolean).join(' ');
